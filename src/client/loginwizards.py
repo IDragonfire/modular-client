@@ -59,10 +59,10 @@ class loginPage(QtGui.QWizardPage):
         self.setButtonText(QtGui.QWizard.CancelButton, "Quit")
         self.setButtonText(QtGui.QWizard.FinishButton, "Login")        
         
-        self.setTitle("ACU ready for combat.")
-        self.setSubTitle("Log yourself in, commander.")
+        self.setTitle("Welcome to Nozon Project Manager.")
+        self.setSubTitle("Please login.")
         
-        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/login_watermark.png"))
+        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/login_watermark.jpg"))
 
         loginLabel = QtGui.QLabel("&User name :")
         self.loginLineEdit = QtGui.QLineEdit()
@@ -174,50 +174,15 @@ class creationAccountWizard(QtGui.QWizard):
 
 
 
-class gameSettingsWizard(QtGui.QWizard):
-    def __init__(self, client, *args, **kwargs):
-        QtGui.QWizard.__init__(self, *args, **kwargs)
-        
-        self.client = client
-
-        self.settings = GameSettings()
-        self.settings.gamePortSpin.setValue(self.client.gamePort)
-        self.settings.checkUPnP.setChecked(self.client.useUPnP)
-        self.addPage(self.settings)
-
-        self.setWizardStyle(1)
-
-        self.setPixmap(QtGui.QWizard.BannerPixmap,
-                QtGui.QPixmap('client/banner.png'))
-        self.setPixmap(QtGui.QWizard.BackgroundPixmap,
-                QtGui.QPixmap('client/background.png'))
-
-        self.setWindowTitle("Set Game Port")
-
-
-    def accept(self):
-        self.client.gamePort = self.settings.gamePortSpin.value()
-        self.client.useUPnP = self.settings.checkUPnP.isChecked()
-        self.client.savePort()
-        QtGui.QWizard.accept(self)
-
-
 
 class IntroPage(QtGui.QWizardPage):
     def __init__(self, parent=None):
         super(IntroPage, self).__init__(parent)
 
-        self.setTitle("Welcome to FA Forever.")
-        self.setSubTitle("In order to play, you first need to create an account.")
-        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/account_watermark_intro.png"))
-
-        label = QtGui.QLabel("This wizard will help you in the process of account creation.<br/><br/><b>At this time, we only allow one account per computer.</b>")
-        
-        label.setWordWrap(True)
-
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(label)
-        self.setLayout(layout)
+        self.setTitle("Welcome to Nozon Project Manager.")
+        self.setSubTitle("In order to use it, you first need to create an account.")
+        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/account_watermark_intro.jpg"))
+        #self.setLayout(layout)
 
 
 
@@ -231,7 +196,7 @@ class AccountCreationPage(QtGui.QWizardPage):
         self.setTitle("Account Creation")
         self.setSubTitle("Please enter your desired login and password. Note that your password will not be stored on our server. Please specify a working email address in case you need to change it.")
         
-        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/account_watermark_input.png"))
+        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/account_watermark_input.jpg"))
 
         loginLabel = QtGui.QLabel("&User name :")
         self.loginLineEdit = QtGui.QLineEdit()
@@ -310,7 +275,8 @@ class AccountCreationPage(QtGui.QWizardPage):
         # check if the login is okay
         login = self.loginLineEdit.text()
         
-        self.client.loginWriteToFaServer("CREATE_ACCOUNT", login, email, password1)
+        self.client.send(dict(command="create_account", login=login, email=email, password = password1))
+        #self.client.loginWriteToFaServer("CREATE_ACCOUNT", login, email, password1)
 
         # Wait for client state to change.
         util.wait(lambda: self.client.state)
@@ -324,43 +290,6 @@ class AccountCreationPage(QtGui.QWizardPage):
             return True  
 
 
-class GameSettings(QtGui.QWizardPage):
-    def __init__(self, parent=None):
-        super(GameSettings, self).__init__(parent)
-
-        self.parent = parent
-        self.setTitle("Network Settings")
-        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/settings_watermark.png"))
-        
-        self.label = QtGui.QLabel()
-        self.label.setText('Forged Alliance needs an open UDP port to play. If you have trouble connecting to other players, try the UPnP option first. If that fails, you should try to open or forward the port on your router and firewall.<br/><br/>Visit the <a href="http://www.faforever.com/forums/viewforum.php?f=3">Tech Support Forum</a> if you need help.<br/><br/>')
-        self.label.setOpenExternalLinks(True)
-        self.label.setWordWrap(True)
-
-        self.labelport = QtGui.QLabel()
-        self.labelport.setText("<b>UDP Port</b> (default 6112)")
-        self.labelport.setWordWrap(True)
-        
-        self.gamePortSpin = QtGui.QSpinBox() 
-        self.gamePortSpin.setMinimum(10)
-        self.gamePortSpin.setMaximum(50000) 
-        self.gamePortSpin.setValue(6112)
-
-        self.checkUPnP = QtGui.QCheckBox("use UPnP (experimental)")
-        self.checkUPnP.setToolTip("FAF can try to open and forward your game port automatically using UPnP.<br/><b>Caution: This doesn't work for all connections, but may help with some routers.</b>")
-
-        layout = QtGui.QVBoxLayout()
-        layout.addWidget(self.label)
-        layout.addWidget(self.labelport)
-        layout.addWidget(self.gamePortSpin)
-        layout.addWidget(self.checkUPnP)
-        self.setLayout(layout)
-
-
-    def validatePage(self):        
-        return 1
-
-
 
 class AccountCreated(QtGui.QWizardPage):
     def __init__(self, *args, **kwargs):
@@ -369,7 +298,7 @@ class AccountCreated(QtGui.QWizardPage):
         self.setFinalPage(True)
         self.setTitle("Congratulations!")
         self.setSubTitle("Your Account has been created.")
-        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/account_watermark_created.png"))
+        self.setPixmap(QtGui.QWizard.WatermarkPixmap, util.pixmap("client/account_watermark_created.jpg"))
 
         self.label = QtGui.QLabel()
         self.label.setWordWrap(True)

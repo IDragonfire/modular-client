@@ -1,7 +1,6 @@
 '''
 Created on Dec 1, 2011
 
-@author: thygrrr
 '''
 
 # CRUCIAL: This must remain on top.
@@ -51,14 +50,16 @@ def runFAF():
     import client
         
     faf_client = client.instance
-    faf_client.setup()
+    
          
     #Connect and login, then load and show the UI if everything worked
     if faf_client.doConnect():
         if faf_client.waitSession() :
-            if faf_client.doLogin():    
+            if faf_client.doLogin():
+                faf_client.setup()
                 #Done setting things up, show the window to the user.
-                faf_client.show()                    
+                if util.developer() : 
+                    faf_client.show()                    
                 
                 #Main update loop    
                 QtGui.QApplication.exec_()

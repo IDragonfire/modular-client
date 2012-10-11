@@ -1,5 +1,4 @@
 # Bug Reporting
-import fa
 
 CRASHREPORT_USER = "pre-login"
 
