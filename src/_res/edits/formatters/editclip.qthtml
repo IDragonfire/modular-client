@@ -1,0 +1,47 @@
+
+
+<table border="0" cellpadding="0" cellspacing="0" width= "230">
+<tbody>
+<tr>
+<td align = "center" width="70" style="border-left: thick dotted #C0C0C0">
+<font color="silver">S c e n e</font><br/>
+<font color="yellow" size="+5"><b>{scene}</b></font>
+</td>
+<td align = "center" width="70" style="border-left: thick dotted #C0C0C0">
+<font color="silver">S h o t</font><br/>
+<font color="orange" size="+5"><b>{shot}</b></font>
+</td>
+<td width="1" bgcolor="black"><br/></td>
+<td align = "center" width="100">
+<font color="silver">I n</font><br/>
+<font color="white" size="+5"><b>{inClip}</b></font>
+</td>
+<td align = "center" width="15">
+<font color="white" size="+15">&#8594;</font>
+</td>
+<td align = "center" width="100">
+<font color="silver">O u t</font><br/>
+<font color="white" size="+5"><b>{outClip}</b></font>
+</td>
+<td width="1" bgcolor="black"><br/></td>
+<td align = "center" width="100">
+<font color="silver">S t a r t</font><br/>
+<font color="white" size="+5"><b>{start}</b></font>
+</td>
+<td align = "center" width="15">
+<font color="white" size="+15">&#8594;</font>
+</td>
+<td align = "center" width="100">
+<font color="silver">E n d</font><br/>
+<font color="white" size="+5"><b>{end}</b></font>
+</td>
+<td width="1" bgcolor="black"><br/></td>
+<td align = "center" width="100">
+<font color="silver">D u r a t i o n</font><br/>
+<font color="white" size="+5"><b>{duration}</b></font>
+</td>
+</tr>
+</tbody>
+</table>
+
+

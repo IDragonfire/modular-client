@@ -28,7 +28,7 @@ else:
 COMMON_DIR = "_res"
 
 # These directories are in Appdata (e.g. C:\ProgramData on some Win7 versions)
-APPDATA_DIR = os.path.join(os.environ['ALLUSERSPROFILE'], "FAForever")
+APPDATA_DIR = os.path.join(os.environ['ALLUSERSPROFILE'], "namClient")
 
 #This contains the themes
 THEME_DIR = os.path.join(APPDATA_DIR , "themes")
@@ -153,7 +153,7 @@ __themedir = None
 
 
 # Public settings object
-settings = QtCore.QSettings("ForgedAllianceForever", "FA Lobby")
+settings = QtCore.QSettings("NozonProjectManager", "NPM Lobby")
                 
     
     
@@ -206,7 +206,7 @@ def setTheme(theme, restart = True):
     settings.sync()
     
     if restart:
-        QtGui.QMessageBox.information(None, "Restart Needed", "FAF will quit now.")
+        QtGui.QMessageBox.information(None, "Restart Needed", "NPM will quit now.")
         QtGui.QApplication.quit()
 
             
@@ -224,25 +224,6 @@ def listThemes():
         logger.error("No Theme Directory")
     return themes
 
-
-def curDownloadAvatar(url):
-    if url in DOWNLOADING_RES_PIX :
-        return DOWNLOADING_RES_PIX[url]
-    return None
-
-def removeCurrentDownloadAvatar(url, player, item):
-    if url in DOWNLOADING_RES_PIX :
-        DOWNLOADING_RES_PIX[url].remove(player)
-
-def addcurDownloadAvatar(url, player):
-    if url in DOWNLOADING_RES_PIX :
-        if not player in DOWNLOADING_RES_PIX[url] :
-            DOWNLOADING_RES_PIX[url].append(player)  
-        return False
-    else :
-        DOWNLOADING_RES_PIX[url] = []
-        DOWNLOADING_RES_PIX[url].append(player)
-        return True
     
      
 
@@ -502,23 +483,28 @@ def md5(fileName):
     return m.hexdigest()
 
 
-def uniqueID(user, session ):
-    ''' This is used to uniquely identify a user's machine to prevent smurfing. '''
-    try:
-        mydll = cdll.LoadLibrary("uid.dll")
-        mydll.uid.restype = c_char_p
-     
-        baseString = (mydll.uid(session, str(user)) )
-        DllCanUnloadNow()
-
-        return baseString
-
-    except:
-        logger.error("UniqueID Failure", exc_info = sys.exc_info())
-        return None
-        
+def list3dProjects():
+    projectList = os.listdir("//server01/shared2/projects")
+    
+    for p in projectList :
+        if p.startswith(".") or p.startswith("_") :
+            projectList.remove(p)
+    
+    projectList.sort(key=str.lower)
+    
+    return projectList 
 
 
+def compositingProjects():
+    projectList = os.listdir("//sledge/vol1/projects")
+    
+    for p in projectList :
+        if p.startswith(".") or p.startswith("_") :
+            projectList.remove(p)
+    
+    projectList.sort(key=str.lower)
+    
+    return projectList 
 
 
 

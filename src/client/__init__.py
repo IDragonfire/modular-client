@@ -14,17 +14,14 @@ if not util.developer():
 
 
 # Initialize all important globals
-LOBBY_HOST = 'faforever.com'
-LOBBY_PORT = 8002
-LOCAL_REPLAY_PORT = 15000
-GAME_PORT_DEFAULT = 6112
+LOBBY_HOST = 'localhost'
+LOBBY_PORT = 8001
 
 # Important URLs
-TEAMSPEAK_URL = "ts3server://faforever.com?port=9987&nickname={login}" #additional teamspeak parameters: &password=serverPassword&channel=MyDefaultChannel &channelpassword=defaultChannelPassword&token=TokenKey&addbookmark=1
-FORUMS_URL = "http://forums.faforever.com"
-WEBSITE_URL = "http://www.faforever.com"
-UNITDB_URL = "http://www.faforever.com/faf/unitsDB/"
-WIKI_URL = "http://www.faforever.com/mediawiki/index.php/Main_Page"
+
+WEBSITE_URL = "http://www.nozon.com"
+
+WIKI_URL = "http://vserver01/twiki/bin/view"
 SUPPORT_URL = "http://www.faforever.com/forums/viewforum.php?f=3"
 TICKET_URL = "http://bitbucket.org/thepilot/falobby/issues"
 

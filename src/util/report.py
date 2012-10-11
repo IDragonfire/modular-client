@@ -1,4 +1,3 @@
-import fa
 BUGREPORT_URL = 'http://thygrrr.de/faforward.php'
 BUGREPORT_USER = 'pre-login'
 
