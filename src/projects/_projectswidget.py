@@ -24,7 +24,12 @@ class ProjectWidget(FormClass, BaseClass):
         self.project3d = None
         self.compositingProject = None
         
-        self.newProjectButton.pressed.connect(self.newProject)
+        if self.client.power >= 16 :
+            self.newProjectButton.pressed.connect(self.newProject)
+        else :
+            self.newProjectButton.setVisible(0)
+            
+        
         self.client.projectsUpdated.connect(self.processProjectsInfo)
     
         self.projectList.itemDoubleClicked.connect(self.projectDoubleClicked)

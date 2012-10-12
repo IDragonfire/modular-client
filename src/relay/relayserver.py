@@ -9,7 +9,7 @@ import time
 import json
 import random
 
-LOCAL_SERVER_PORT = 7001
+
 
 class Relayer(QtCore.QObject): 
     '''
@@ -66,7 +66,9 @@ class Relayer(QtCore.QObject):
             self.blockSize = 0
     
     def dispatch(self, message):
-        self.socket.write
+        data = json.dumps(message)
+        self.__logger.info("Outgoing JSON Message: " + data)
+        self.writeToClient(data)
             
     # 
     # JSON Protocol v2 Implementation below here
@@ -143,7 +145,7 @@ class Relayer(QtCore.QObject):
 
 
 
-class RelayServer(QtNetwork.QTcpServer):
+class RelayServer(QtNetwork.QLocalServer):
     ''' 
     This is a local listening server that FA can send its replay data to.
     It will instantiate a fresh ReplayRecorder for each FA instance that launches.
@@ -152,7 +154,7 @@ class RelayServer(QtNetwork.QTcpServer):
     __logger.setLevel(logging.DEBUG)
 
     def __init__(self, client, *args, **kwargs):
-        QtNetwork.QTcpServer.__init__(self, *args, **kwargs)
+        QtNetwork.QLocalServer.__init__(self, *args, **kwargs)
         self.relayers = {}
         self.client = client
       
@@ -162,12 +164,12 @@ class RelayServer(QtNetwork.QTcpServer):
         
     def doListen(self):
         while not self.isListening():
-            self.listen(QtNetwork.QHostAddress.LocalHost, LOCAL_SERVER_PORT)
+            self.listen("npmClient")
             if (self.isListening()):
-                self.__logger.info("relay listening on address " + self.serverAddress().toString() + ":" + str(self.serverPort()))
+                self.__logger.info("relay listening on name " + self.serverName())
             else:
-                self.__logger.error("cannot listen, port probably used by another application: " + str(LOCAL_SERVER_PORT))
-                answer = QtGui.QMessageBox.warning(None, "Port Occupied", "FAF couldn't start its local relay server, which is needed to play Forged Alliance online. Possible reasons:<ul><li><b>FAF is already running</b> (most likely)</li><li>another program is listening on port {port}</li></ul>".format(port=local_port), QtGui.QMessageBox.Retry, QtGui.QMessageBox.Abort)
+                self.__logger.error("cannot listen, port probably used by another application ")
+                answer = QtGui.QMessageBox.warning(None, "Port Occupied", "Couldn't start its local server, which is needed for third party apps.", QtGui.QMessageBox.Retry, QtGui.QMessageBox.Abort)
                 if answer == QtGui.QMessageBox.Abort:
                     return False
         return True
@@ -177,16 +179,16 @@ class RelayServer(QtNetwork.QTcpServer):
             del self.relayers[relay]
             
     def dispatch(self, relay, message):
-        if relay in self.replayers :
-            self.replayers[relay].dispatch(message)
+        if relay in self.relayers :
+            self.relayers[relay].dispatch(message)
         else :
-            self.__logger.warn("The client is not found !" + str(relay))
+            self.__logger.warn("The client is not found ! " + str(relay))
 
     @QtCore.pyqtSlot()       
     def acceptConnection(self):
         socket = self.nextPendingConnection()
         self.__logger.debug("incoming connection to relay server...")
-        session = random.getrandbits(32)
+        session = int(random.getrandbits(32))
         if not session in self.relayers : 
             self.relayers[session] = Relayer(self, self.client, socket, session)
         pass

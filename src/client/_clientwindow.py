@@ -470,7 +470,7 @@ class ClientWindow(FormClass, BaseClass):
             pass
         
           
-    def doConnect(self):  
+    def doConnect(self, reconnect=False):  
           
         if not self.relayServer.doListen():
             return False
@@ -480,8 +480,12 @@ class ClientWindow(FormClass, BaseClass):
         self.progress.setAutoClose(False)
         self.progress.setAutoReset(False)
         self.progress.setModal(1)
-        self.progress.setWindowTitle("Connecting...")
-        self.progress.setLabelText("Establishing connection ...")
+        if reconnect == False :
+            self.progress.setWindowTitle("Connecting...")
+            self.progress.setLabelText("Establishing connection ...")
+        else :
+            self.progress.setWindowTitle("Connection to server lost...")
+            self.progress.setLabelText("Re-establishing connection ...")           
         self.progress.show()                
 
         # Begin connecting.        
@@ -492,6 +496,9 @@ class ClientWindow(FormClass, BaseClass):
         
         while (self.socket.state() != QtNetwork.QAbstractSocket.ConnectedState) and self.progress.isVisible():
             QtGui.QApplication.processEvents()                                        
+            if self.socket.state() ==  QtNetwork.QAbstractSocket.UnconnectedState :
+                self.socket.connectToHost(LOBBY_HOST, LOBBY_PORT)
+                
 
         self.state = ClientState.NONE    
         self.localIP = str(self.socket.localAddress().toString())
@@ -499,7 +506,6 @@ class ClientWindow(FormClass, BaseClass):
 
 #        #Perform Version Check first        
         if not self.socket.state() == QtNetwork.QAbstractSocket.ConnectedState:
-            
             self.progress.close() # in case it was still showing...
             # We either cancelled or had a TCP error, meaning the connection failed..
             if self.progress.wasCanceled():
@@ -596,116 +602,13 @@ class ClientWindow(FormClass, BaseClass):
             self.state = ClientState.REJECTED
 
 
-    def isFriend(self, name):
-        '''
-        Convenience function for other modules to inquire about a user's friendliness.
-        '''
-        return name in self.friends
-
-
-
-    def isPlayer(self, name):
-        '''
-        Convenience function for other modules to inquire about a user's civilian status.
-        '''        
-        return name in self.players or name == self.login
-
 
 
     #Color table used by the following method
     # CAVEAT: This will break if the theme is loaded after the client package is imported
     colors = json.loads(util.readfile("client/colors.json"))
 
-    def getUserLeague(self, name):
-        '''
-        Returns a user's league if any
-        '''        
-        if name in self.players:
-            if "league" in self.players[name] : 
-                return self.players[name]["league"]
-            
-
-        return None
-    
-    def getUserCountry(self, name):
-        '''
-        Returns a user's country if any
-        '''        
-        if name in self.players:
-            if "country" in self.players[name] : 
-                return self.players[name]["country"]
-            
-
-        return None
-    
-    def getUserAvatar(self, name):
-        '''
-        Returns a user's avatar if any
-        '''        
-        if name in self.players:
-            return self.players[name]["avatar"]
-        else:
-            return None
-    
-    
-    def getUserColor(self, name):
-        '''
-        Returns a user's color depending on their status with relation to the FAF client
-        '''
-        if name == self.login:
-            return self.getColor("self")
-        elif name in self.friends:
-            return self.getColor("friend")
-        elif name in self.players:
-            return self.getColor("player")
-        else:
-            return self.getColor("default")
-
-
-    def getColor(self, name):
-        if name in self.colors:
-            return self.colors[name]
-        else:
-            return self.colors["default"]
-
-    
-    
-    def getUserRanking(self, name):
-        '''
-        Returns a user's ranking (trueskill rating) as a float.
-        '''
-        if name in self.players:
-            return self.players[name]["rating_mean"] - 3*self.players[name]["rating_deviation"]
-        else:
-            return None
-
-
-
-    @QtCore.pyqtSlot()
-    def startedFA(self):
-        '''
-        Slot hooked up to fa.exe.instance when the process has launched.
-        It will notify other modules through the signal gameEnter().
-        '''
-        logger.info("FA has launched in an attached process.")
-        self.gameEnter.emit()
-
-
-    @QtCore.pyqtSlot(int)
-    def finishedFA(self, exit_code):
-        '''
-        Slot hooked up to fa.exe.instance when the process has ended.
-        It will notify other modules through the signal gameExit().
-        '''        
-        if not exit_code:
-            logger.info("FA has finished with exit code: " + str(exit_code))
-        else:
-            logger.warn("FA has finished with exit code: " + str(exit_code))
-        
-        self.writeToServer("FA_CLOSED")
-        self.gameExit.emit()
-
-        
+       
 
     @QtCore.pyqtSlot(int)
     def mainTabChanged(self, index):
@@ -735,18 +638,6 @@ class ClientWindow(FormClass, BaseClass):
 #            self.showTourneys.emit()
 
 
-
-
-
-    def joinGameFromURL(self, url):
-        '''
-        Tries to join the game at the given URL
-        '''
-        logger.debug("joinGameFromURL: " + url.toString())
-        if (fa.exe.available()):
-            if fa.exe.check(url.queryItemValue("mod"), url.queryItemValue("map")):
-                self.send(dict(command="game_join", uid=int(url.queryItemValue("uid")), gameport=self.gamePort))
-    
 
     def loginWriteToFaServer(self, action, *args, **kw):
         '''
@@ -862,73 +753,22 @@ class ClientWindow(FormClass, BaseClass):
     @QtCore.pyqtSlot()
     def disconnectedFromServer(self):
         logger.warn("Disconnected from lobby server.")
-
-        if self.state == ClientState.ACCEPTED:
-            QtGui.QMessageBox.warning(QtGui.QApplication.activeWindow(), "Disconnected from FAF", "The lobby lost the connection to the FAF server.<br/><b>You might still be able to chat.<br/>To play, try reconnecting a little later!</b>", QtGui.QMessageBox.Close)
         
-
-                
-        self.state = ClientState.DROPPED             
-            
-
+        if self.state == ClientState.ACCEPTED:
+            #QtGui.QMessageBox.warning(QtGui.QApplication.activeWindow(), "Disconnected from the server", "The client lost the connection to the server.<br/>Try reconnecting a little later!</b>", QtGui.QMessageBox.Close)
+            self.state = ClientState.DROPPED
+            #while self.socket.state() != QtNetwork.QAbstractSocket.ConnectedState :
+            logger.warn("Reconnecting.")
+            #QtCore.QCoreApplication.processEvents()
+            if self.doConnect(reconnect=True):
+                if self.waitSession() :
+                    self.doLogin()
 
     @QtCore.pyqtSlot(QtNetwork.QAbstractSocket.SocketError)
     def socketError(self, error):
         logger.error("TCP Socket Error: " + self.socket.errorString())
-        if self.state > ClientState.NONE:   # Positive client states deserve user notification.
-            QtGui.QMessageBox.critical(None, "TCP Error", "A TCP Connection Error has occurred:<br/><br/><b>" + self.socket.errorString()+"</b>", QtGui.QMessageBox.Close)        
-
-
-    
-    @QtCore.pyqtSlot()
-    def forwardLocalBroadcast(self, source, message):
-        self.localBroadcast.emit(source, message)
-    
-    
-
-    #@QtCore.pyqtSlot()
-    def forwardPublicBroadcast(self, message):
-        self.publicBroadcast.emit(message)
-    
-    
-    def requestAvatars(self):
-        self.send(dict(command="admin", action="requestavatars"))
-
-    def joinChannel(self, user, channel):
-        '''Close FA remotly'''
-        self.send(dict(command="admin", action="join_channel", users=[user], channel=channel))
-
-    def addAvatar(self, userAvatar, avatarChosen):
-        '''Adding a new avatar for the user'''
-        self.send(dict(command="admin", action="addavatar", user=userAvatar, avatar=avatarChosen))
-    
-    
-    def closeFA(self, userToClose):
-        '''Close FA remotly'''
-        self.send(dict(command="admin", action="closeFA", user=userToClose))
-
-    def closeLobby(self, userToClose):
-        '''Close lobby remotly'''
-        self.send(dict(command="admin", action="closelobby", user=userToClose))
-        
-    
-    def addFriend(self, friend):
-        '''Adding a new friend by user'''
-        self.friends.append(friend)
-        self.send(dict(command="social", friends=self.friends)) #LATER: Use this line instead
-        #self.writeToServer("ADD_FRIEND", friend)
-        self.usersUpdated.emit([friend])
-
-
-
-    def remFriend(self, friend):
-        '''Removal of a friend by user'''
-        self.friends.remove(friend)
-        #self.writeToServer("REMOVE_FRIEND", friend)
-        self.send(dict(command="social", friends=self.friends)) #LATER: Use this line instead
-        self.usersUpdated.emit([friend])
-
-
+        #if self.state > ClientState.NONE:   # Positive client states deserve user notification.
+            #QtGui.QMessageBox.critical(None, "TCP Error", "A TCP Connection Error has occurred:<br/><br/><b>" + self.socket.errorString()+"</b>", QtGui.QMessageBox.Close)        
                     
     def process(self, action, stream):
         logger.debug("Server: " + action)
@@ -968,9 +808,6 @@ class ClientWindow(FormClass, BaseClass):
                 self.dispatch(json.loads(action))
             except:
                 logger.error("Error dispatching JSON: " + action, exc_info=sys.exc_info())
-                
-
-
 
     # 
     # JSON Protocol v3 Implementation below here
@@ -992,7 +829,7 @@ class ClientWindow(FormClass, BaseClass):
             if "debug" in message:
                 logger.info(message['debug'])
             if "relay" in message:
-                logger.info("message for a client" + str(message["relay"]))
+                logger.info("message for a client : " + str(message["relay"]))
                 self.relayServer.dispatch(message["relay"], message)
             elif "command" in message:                
                 cmd = "handle_" + message['command']
@@ -1122,12 +959,10 @@ class ClientWindow(FormClass, BaseClass):
             self.avatarList.emit(message["avatarlist"])
     
     def handle_social(self, message):
-        if "friends" in message:
-            self.friends = message["friends"]
-            self.usersUpdated.emit(self.players.keys())
-        
-        if "autojoin" in message:
-            self.autoJoin.emit(message["autojoin"])
+#        self.usersUpdated.emit(self.players.keys())
+#        
+#        if "autojoin" in message:
+#            self.autoJoin.emit(message["autojoin"])
         
         if "power" in message:
             self.power = message["power"]
