@@ -25,8 +25,13 @@ class EditsWidget(FormClass, BaseClass):
         self.shotList.setItemDelegate(EditClipItemDelegate(self))
         self.projectList.setItemDelegate(ClipItemDelegate(self))
         
-        self.parseXmlButton.pressed.connect(self.submitXml)
-        self.validateEditButton.pressed.connect(self.validateEdit)
+        
+        if self.client.power >= 16 :
+            self.parseXmlButton.pressed.connect(self.submitXml)
+            self.validateEditButton.pressed.connect(self.validateEdit)
+        else :
+            self.parseXmlButton.setVisible(0)
+        
         
         self.validateEditButton.setVisible(0)
         self.shotList.setVisible(0)

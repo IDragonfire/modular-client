@@ -1,3 +1,20 @@
+#import site 
+#site.addsitedir(r"c:/Python26/Lib/site-packages/")
+#
+#import sys
+#
+#sys.path.append("c:/workspace/nam_client/src")
+#
+#import relay.client as client
+#reload(client)
+#npmclient = client.npmClient()
+#
+#npmclient.send(dict(action= "select", command= "projects", uid= 1))
+#
+#
+#npmclient.stop()
+
+
 import sip
 sip.setapi('QString', 2)
 sip.setapi('QVariant', 2)
@@ -5,32 +22,43 @@ sip.setapi('QStringList', 2)
 sip.setapi('QList', 2)
 sip.setapi('QProcess', 2)
 
-from PyQt4 import QtCore
+from PyQt4 import QtCore, QtGui
 from PyQt4 import QtNetwork
 import util
 import logging
+import time
 import json
 
 logger= logging.getLogger("npm.client")
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 class npmClient(object) :
-    def __init__(self) :
-        self.socket = QtNetwork.QTcpSocket()  
+    def __init__(self, app = None) :
+        self.socket = QtNetwork.QLocalSocket()  
+
+        self.blockSize = 0   
+        
+
+        self.app = app
+        
+        self.answered = []
+        self.breakWait = False
         self.socket.readyRead.connect(self.readFromServer)
         self.socket.disconnected.connect(self.disconnectedFromServer)
-        self.blockSize = 0
         
-        self.socket.connectToHost("localhost", 7001)    
-      
-      
+        self.socket.connectToServer("npmClient")
+        if not self.socket.waitForConnected(1000) :
+            self.displayMessage("error", "Cannot connect to the server.")
+            self.stop()
+
+
+     
     def stop(self) :
-        if self.socket.state() == QtNetwork.QTcpSocket.ConnectedState:
-            self.socket.disconnectFromHost()
-    
-        
+        if self.socket.state() == QtNetwork.QLocalSocket.ConnectedState:
+            self.socket.disconnectFromServer()
         
     def readFromServer(self) :
+        
         ins = QtCore.QDataStream(self.socket)        
         ins.setVersion(QtCore.QDataStream.Qt_4_2)
         
@@ -50,26 +78,21 @@ class npmClient(object) :
         '''
         A fairly pythonic way to process received strings as JSON messages.
         '''
-        try:
-            message = json.loads(action)
-            if "debug" in message:
-                logger.info(message['debug'])
-            if "relay" in message:
-                logger.info("message for a client" + str(message["relay"]))
-                self.relayServer.dispatch(message["relay"], message)
-            elif "command" in message:                
-                cmd = "handle_" + message['command']
-                if hasattr(self, cmd):
-                    getattr(self, cmd)(message)
-                else:                
-                    logger.error("Unknown command for JSON." + message['command'])
-                    raise "StandardError"
-            else:
-                logger.debug("No command in message.")                
-        except:
-            raise #Pass it on to our caller, Malformed Command
+        
+        action = json.loads(action)
+        
+        if "command" in action :
+            if action["command"] == "notice" :
+                self.displayMessage(action["style"], action["text"])
+                self.breakWait = True
+                return
+        self.answered.append(action)
+       
+        self.function(self.answered, *self.args)
+        
 
-    def writeToServer(self, action, *args, **kw):
+        
+    def writeToServer(self, action, function, *args, **kw):
         '''
         This method is the workhorse of the client, and is used to send messages, queries and commands to the server.
         '''
@@ -81,59 +104,63 @@ class npmClient(object) :
 
         out.writeUInt32(0)
         out.writeQString(action)
-         
-        for arg in args :
-            if type(arg) is IntType:
-                out.writeInt(arg)
-            elif isinstance(arg, basestring):
-                out.writeQString(arg)
-            elif type(arg) is FloatType:
-                out.writeFloat(arg)
-            elif type(arg) is ListType:
-                out.writeQVariantList(arg)
-            elif type(arg) is DictType:
-                out.writeQString(json.dumps(arg))                                
-            elif type(arg) is QtCore.QFile :       
-                arg.open(QtCore.QIODevice.ReadOnly)
-                fileDatas = QtCore.QByteArray(arg.readAll())
-                #seems that that logger doesn't work
-                #logger.debug("file size ", int(fileDatas.size()))
-                out.writeInt(fileDatas.size())
-                out.writeRawData(fileDatas)
-
-                # This may take a while. We display the progress bar so the user get a feedback
-                self.sendFile = True
-                self.progress.setLabelText("Sending file to server")
-                self.progress.setCancelButton(None)
-                self.progress.setWindowFlags(QtCore.Qt.CustomizeWindowHint | QtCore.Qt.WindowTitleHint)
-                self.progress.setAutoClose(True)
-                self.progress.setMinimum(0)
-                self.progress.setMaximum(100)
-                self.progress.setModal(1)
-                self.progress.setWindowTitle("Uploading in progress")
- 
-                self.progress.show()
-                arg.close()
-            else:
-                logger.warn("Uninterpreted Data Type: " + str(type(arg)) + " sent as str: " + str(arg))
-                out.writeQString(str(arg))
 
         out.device().seek(0)        
         out.writeUInt32(block.size() - 4)
         self.bytesToSend = block.size() - 4
-    
+        
         self.socket.write(block)
+        self.answered = []
+        self.function = function
+        self.args = args
+        
 
-    def send(self, message, qfile = None):
+    def send(self, message, function, *args):
         data = json.dumps(message)
-        if qfile == None :
-            logger.info("Outgoing JSON Message: " + data)
-            self.writeToServer(data)
-        else :
-            logger.info("Outgoing JSON Message + file: " + data)
-            self.writeToServer(data, qfile)
+        logger.info("Outgoing JSON Message: " + data)
+        self.writeToServer(data, function, *args)
 
 
+    def askQuestion(self, question):
+        if self.app :
+            reply = QtGui.QMessageBox.question(self.app, "Question from server",
+                    question,
+                    QtGui.QMessageBox.Yes | QtGui.QMessageBox.No | QtGui.QMessageBox.Cancel)
+            if reply == QtGui.QMessageBox.Yes:
+                return True
+            elif reply == QtGui.QMessageBox.No:
+                return False
+            else:
+                return False
+
+        return False
+
+
+    def displayMessage(self, style, message):
+        if style == "error" :
+            if self.app :
+                QtGui.QMessageBox.critical(self.app, "Error from Server", message)
+            else :
+                logger.error(message)
+        elif style == "warning":
+            if self.app :
+                QtGui.QMessageBox.warning(self.app, "Warning from Server", message)
+            else :
+                logger.warn(message)
+        else:
+            if self.app :         
+                QtGui.QMessageBox.information(self.app, "Notice from Server", message)
+            else :
+                logger.info(message)
+
+    def waitForAnswer(self):
+        startTime = time.time()
+        while self.answered == [] and self.breakWait == False :            
+            if time.time() - startTime > 1 :
+                self.displayMessage("error", "No answer from the server.")
+                break
+            QtCore.QCoreApplication.processEvents()
+        return self.answered
 
     def disconnectedFromServer(self) :
         pass
