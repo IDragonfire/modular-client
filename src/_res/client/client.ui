@@ -103,6 +103,36 @@
         </property>
        </layout>
       </widget>
+      <widget class="QWidget" name="storyboardTab">
+       <attribute name="title">
+        <string>Story Board</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_5">
+        <property name="margin">
+         <number>6</number>
+        </property>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="validationsTab">
+       <attribute name="title">
+        <string>Validations</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <property name="margin">
+         <number>6</number>
+        </property>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="usersTab">
+       <attribute name="title">
+        <string>Users</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_6">
+        <property name="margin">
+         <number>6</number>
+        </property>
+       </layout>
+      </widget>
      </widget>
     </item>
    </layout>

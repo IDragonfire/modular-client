@@ -27,8 +27,8 @@ FormClass, BaseClass = util.loadUiType("client/client.ui")
 
 class ClientWindow(FormClass, BaseClass):
     '''
-    This is the main lobby client that manages the FAF-related connection and data,
-    in particular players, games, ranking, etc.
+    This is the main lobby client that manages the server related connection and data,
+    in particular projects, edits, users, etc.
     Its UI also houses all the other UIs for the sub-modules.
     '''
     #These signals are emitted when the client is connected or disconnected from FAF
@@ -46,10 +46,13 @@ class ClientWindow(FormClass, BaseClass):
 #    gameExit    = QtCore.pyqtSignal()
      
     #These signals propagate important client state changes to other modules
+    userUpdated     = QtCore.pyqtSignal(dict)
     projectsUpdated = QtCore.pyqtSignal(dict)
     editsUpdated    = QtCore.pyqtSignal(dict)
     clipUpdated     = QtCore.pyqtSignal(dict)
-    
+    mayaAnimUpdated = QtCore.pyqtSignal(dict)
+    commentUpdated  = QtCore.pyqtSignal(dict)
+    powerUpdated    = QtCore.pyqtSignal()
 
     
     
@@ -138,14 +141,10 @@ class ClientWindow(FormClass, BaseClass):
 
         #Load the icons for the tabs
         self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.projectsTab), util.icon("client/category.png"))
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.editsTab), util.icon("client/order-162.png"))
-        #self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.mapsTab), util.icon("client/maps.png"))
-        
-        #self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.ladderTab), util.icon("client/ladder.png"))
-        #self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.tourneyTab), util.icon("client/tourney.png"))
-        #self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.replaysTab), util.icon("client/replays.png"))
-        #self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.tutorialsTab), util.icon("client/tutorials.png"))
-        
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.editsTab), util.icon("client/showreel.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.validationsTab), util.icon("client/order-162.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.storyboardTab), util.icon("client/print.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.usersTab), util.icon("client/customers.png"))       
         #self.mainTabs.setTabEnabled(self.mainTabs.indexOf(self.tourneyTab), False)
 
     def trayEvent(self, reason):
@@ -164,6 +163,10 @@ class ClientWindow(FormClass, BaseClass):
 
         import projects
         import edits
+        import scenes3d
+        import storyboard
+        import users
+        import comments
 #        import stats
 #        import vault
 #        import games
@@ -171,7 +174,10 @@ class ClientWindow(FormClass, BaseClass):
         
         self.projects = projects.Projects(self)
         self.edits = edits.Edits(self)
-        
+        self.scenes3d = scenes3d.Scenes3d(self)
+        self.storyboard = storyboard.Storyboard(self)
+        self.users = users.Users(self)
+        self.comments = comments.Comments(self)
         # Initialize chat
 #        self.chat = chat.Lobby(self)
     
@@ -251,11 +257,8 @@ class ClientWindow(FormClass, BaseClass):
         self.doneresize.emit()
      
     def initMenus(self):
-        self.actionLinkTeamspeak.triggered.connect(self.linkTeamspeak)
         self.actionLinkWebsite.triggered.connect(self.linkWebsite)
         self.actionLinkWiki.triggered.connect(self.linkWiki)
-        self.actionLinkForums.triggered.connect(self.linkForums)
-        self.actionLinkUnitDB.triggered.connect(self.linkUnitDB)
 
         self.actionWiki.triggered.connect(self.linkWiki)
         self.actionReportBug.triggered.connect(self.linkReportBug)
@@ -268,17 +271,9 @@ class ClientWindow(FormClass, BaseClass):
         self.actionClearSettings.triggered.connect(self.clearSettings)        
         self.actionClearGameFiles.triggered.connect(self.clearGameFiles)
 
-        self.actionSetGamePath.triggered.connect(self.switchPath)
-        self.actionSetGamePort.triggered.connect(self.switchPort)
-
-
         #Toggle-Options
         self.actionSetAutoLogin.triggered.connect(self.updateOptions)
         self.actionSetSoundEffects.triggered.connect(self.updateOptions)
-        self.actionSetOpenGames.triggered.connect(self.updateOptions)
-        self.actionSetJoinsParts.triggered.connect(self.updateOptions)
-        self.actionSetLiveReplays.triggered.connect(self.updateOptions)
-        self.actionSaveGamelogs.triggered.connect(self.updateOptions)
         
         
         #Init themes as actions.
@@ -316,16 +311,7 @@ class ClientWindow(FormClass, BaseClass):
     def switchTheme(self):
         util.setTheme(self.sender().theme, True)
 
-        
-    @QtCore.pyqtSlot()
-    def switchPath(self):
-        fa.updater.Wizard(self).exec_()
-        
-    @QtCore.pyqtSlot()
-    def switchPort(self):
-        import loginwizards
-        loginwizards.gameSettingsWizard(self).exec_()
-        
+       
     @QtCore.pyqtSlot()
     def clearSettings(self):
         result = QtGui.QMessageBox.question(None, "Clear Settings", "Are you sure you wish to clear all settings, login info, etc. used by this program?", QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
@@ -349,9 +335,6 @@ class ClientWindow(FormClass, BaseClass):
             QtGui.QApplication.quit()
         
     
-    @QtCore.pyqtSlot()
-    def linkTeamspeak(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(TEAMSPEAK_URL.format(login=self.login)))
 
     @QtCore.pyqtSlot()
     def linkWebsite(self):
@@ -360,14 +343,6 @@ class ClientWindow(FormClass, BaseClass):
     @QtCore.pyqtSlot()
     def linkWiki(self):
         QtGui.QDesktopServices.openUrl(QtCore.QUrl(WIKI_URL))
-
-    @QtCore.pyqtSlot()
-    def linkForums(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(FORUMS_URL))
-
-    @QtCore.pyqtSlot()
-    def linkUnitDB(self):
-        QtGui.QDesktopServices.openUrl(QtCore.QUrl(UNITDB_URL))
 
     @QtCore.pyqtSlot()
     def linkReportBug(self):
@@ -573,9 +548,11 @@ class ClientWindow(FormClass, BaseClass):
             self.actionSetAutoLogin.setChecked(self.autologin)
             self.updateOptions()
 
-            self.progress.close()                        
+            self.progress.close()
+              
             #This is a triumph... I'm making a note here: Huge success!
-            self.connected.emit()            
+            self.connected.emit()
+            self.projects.loggedInSetup()
             return True            
         elif self.state == ClientState.REJECTED:
             logger.warning("Login rejected.")
@@ -867,107 +844,15 @@ class ClientWindow(FormClass, BaseClass):
             logger.debug("Login success" )
             self.state = ClientState.ACCEPTED
             
-                
-        
-    def handle_game_launch(self, message):
-        logger.info("Handling game_launch via JSON " + str(message))
-        if 'args' in message:            
-            arguments = message['args']
-        else:
-            arguments = []
-            
-        # Important: This is the race parameter used by ladder search.
-        if 'mod' in message:
-            modkey = 'mod'
-        else:
-            modkey = 'featured_mod'
-            
-        # HACK: Ideally, this comes from the server, too. LATER: search_ranked message
-        if message[modkey] == "ladder1v1":
-            arguments.append(self.games.race)
-        
-        # Ensure we have the map
-        if "mapname" in message:
-            fa.exe.checkMap(message['mapname'], True)
-
-        # Writing a file for options
-        if "options" in message:
-            filename = os.path.join(util.CACHE_DIR, "options.lua")
-            options  = QtCore.QFile(filename)
-            options.open(QtCore.QIODevice.WriteOnly | QtCore.QIODevice.Text)
-            numOpt = 0
-            
-            options.write("Options = { ")
-            
-            lenopt = len(message['options'])
-            
-            for option in message['options'] :
-                
-                if option == True :
-                    options.write("'1'")
-                else :
-                    options.write("'0'")
-                
-                numOpt = numOpt + 1
-                if lenopt != numOpt :
-                    options.write(", ")
-                
-                
-            
-            options.write(" }")
-            
-            options.close()
-        #Player rating
-        arguments.append('/mean')        
-        arguments.append(str(self.players[self.login]["rating_mean"]))    
-        arguments.append('/deviation')        
-        arguments.append(str(self.players[self.login]["rating_deviation"]))
-
-        #Experimental UPnP Mapper - mappings are removed on app exit
-        if self.useUPnP:
-            fa.upnp.createPortMapping(self.localIP, self.gamePort, "UDP")
-        
-        version_info = message.get('version_info', {})
-        version_info['lobby'] = util.VERSION_STRING
-        
-        info = dict(uid = message['uid'], recorder = self.login, featured_mod = message[modkey], game_time=time.time(), version_info=version_info)
-        
-        
-        fa.exe.play(info, self.relayServer.serverPort(), self.gamelogs, arguments)
-
-      
-
-    def handle_tournament_types_info(self, message):
-        self.tourneyTypesInfo.emit(message)
-
-    def handle_tournament_info(self, message):
-        self.tourneyInfo.emit(message)
-
-    def handle_tutorials_info(self, message):
-        self.tutorialsInfo.emit(message)
-
-    def handle_mod_info(self, message):
-        self.modInfo.emit(message)    
-
-    
-    def handle_game_info(self, message):
-        self.gameInfo.emit(message)                    
-    
-
-    def handle_admin(self, message):
-        if "avatarlist" in message :
-            self.avatarList.emit(message["avatarlist"])
     
     def handle_social(self, message):
-#        self.usersUpdated.emit(self.players.keys())
-#        
-#        if "autojoin" in message:
-#            self.autoJoin.emit(message["autojoin"])
-        
         if "power" in message:
             self.power = message["power"]
+            self.powerUpdated.emit()
 
-        
+    def handle_user_info(self, message):
+        self.userUpdated.emit(message)
+    
     def handle_clip_info(self, message):
         self.clipUpdated.emit(message)    
     
@@ -976,6 +861,12 @@ class ClientWindow(FormClass, BaseClass):
      
     def handle_edits_info(self, message):
         self.editsUpdated.emit(message)
+     
+    def handle_comment_info(self, message):
+        self.commentUpdated.emit(message) 
+    
+    def handle_maya_anim_info(self, message):
+        self.mayaAnimUpdated.emit(message)
      
     def handle_notice(self, message):
         if "text" in message:
@@ -994,13 +885,3 @@ class ClientWindow(FormClass, BaseClass):
                 self.localBroadcast.emit("Scores", 'Report incorrect scores here: <a style="color:cornflowerblue" href="http://www.faforever.com/forums/viewtopic.php?f=3&t=664">Score Report Thread</a>')                
             else:
                 QtGui.QMessageBox.information(self, "Notice from Server", message["text"])
-                
-        if message["style"] == "kill":
-            logger.info("Server has killed your Forged Alliance Process.")
-            fa.exe.kill()
-
-        if message["style"] == "kick":
-            logger.info("Server has kicked you from the Lobby.")
-            self.cleanup()
-            
-            

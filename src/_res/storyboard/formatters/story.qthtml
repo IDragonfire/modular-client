@@ -1,0 +1,22 @@
+<table cellpadding="5" cellspacing="0" width= "700" border = "0">
+<tbody>
+<tr>
+<td align = "center" width="50">
+<font color="white">S c e n e<br></font>
+<font color="yellow" size="+5">{scene}</font><br>
+<font color="white">S h o t<br></font>
+<font color="orange" size="+5">{shot}</font>
+</td>
+
+<td width="300">
+<font color="white">
+Range : {inClip} to {outClip}<br><br>
+{comments}
+</font>
+</td>
+
+</tr>
+</tbody>
+</table>
+
+

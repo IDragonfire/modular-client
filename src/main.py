@@ -55,8 +55,9 @@ def runFAF():
     #Connect and login, then load and show the UI if everything worked
     if faf_client.doConnect():
         if faf_client.waitSession() :
+            faf_client.setup()
             if faf_client.doLogin():
-                faf_client.setup()
+                
                 #Done setting things up, show the window to the user.
                 if util.developer() : 
                     faf_client.show()                    

@@ -2,6 +2,7 @@
 import sys
 import os
 from ctypes import *
+import shutil
 
 def developer():
     return sys.executable.endswith("python.exe")
@@ -35,9 +36,6 @@ THEME_DIR = os.path.join(APPDATA_DIR , "themes")
 
 #This contains cached data downloaded while communicating with the lobby - at the moment, mostly map preview pngs.
 CACHE_DIR = os.path.join(APPDATA_DIR , "cache")
-
-#This contains the replays recorded by the local replay server
-REPLAY_DIR = os.path.join(APPDATA_DIR , "replays")
 
 #This contains all Lobby, Chat and Game logs
 LOG_DIR = os.path.join(APPDATA_DIR , "logs")
@@ -82,9 +80,6 @@ if not os.path.isdir(CACHE_DIR):
 
 if not os.path.isdir(THEME_DIR):
     os.makedirs(THEME_DIR)
-    
-if not os.path.isdir(REPLAY_DIR):
-    os.makedirs(REPLAY_DIR)
     
 if not os.path.isdir(LOG_DIR):
     os.makedirs(LOG_DIR)
@@ -235,7 +230,7 @@ def respix(url):
         return DOWNLOADED_RES_PIX[url]
     return None
 
-def pixmap(filename, themed=True):
+def pixmap(filename, themed=True, resize = False, **kwargs):
     '''
     This function loads a pixmap from a themed directory, or anywhere.
     It also stores them in a cache dictionary (may or may not be necessary depending on how Qt works under the hood)
@@ -249,7 +244,10 @@ def pixmap(filename, themed=True):
             else:
                 pix = QtGui.QPixmap(os.path.join(COMMON_DIR, filename))
         else:
-            pix = QtGui.QPixmap(filename) #Unthemed means this can come from any location
+            if resize :
+                pix = QtGui.QPixmap(filename)
+            else :
+                pix = QtGui.QPixmap(filename) #Unthemed means this can come from any location
                             
         __pixmapcache[filename] = pix
         return pix
@@ -357,14 +355,14 @@ def readfile(filename, themed = True):
 
 
 
-def icon(filename, themed=True, pix = False):
+def icon(filename, themed=True, pix = False, resize = False, **kwargs):
     '''
     Convenience method returning an icon from a cached, optionally themed pixmap as returned by the util.pixmap(...) function
     '''
     if pix :
-        return pixmap(filename, themed)
+        return pixmap(filename, themed, resize, **kwargs)
     else :
-        return QtGui.QIcon(pixmap(filename, themed))
+        return QtGui.QIcon(pixmap(filename, themed, resize, **kwargs))
  
     
 def sound(filename, themed = True):
@@ -507,7 +505,23 @@ def compositingProjects():
     return projectList 
 
 
-
+def cache(directory, filename):
+    ''' create a local copy of the file and return that copy
+    This method ensure that the file is up to date.
+    '''
+    cachedir = os.path.join(CACHE_DIR, directory)
+    if not os.path.isdir(cachedir):
+        os.makedirs(cachedir)
+    
+    cacheFile = os.path.join(cachedir, os.path.basename(filename))
+    
+    if not os.path.isfile(cacheFile) :
+        shutil.copyfile(filename, cacheFile)
+    else :
+        if os.path.getsize(cacheFile) != os.path.getsize(filename) :  
+            shutil.copyfile(filename, cacheFile)
+    return cacheFile
+        
 
 from crash import CrashDialog
 from report import ReportDialog
