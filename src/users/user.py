@@ -1,7 +1,8 @@
 from PyQt4 import QtGui, QtCore
 import util
 
-class ProjectItemDelegate(QtGui.QStyledItemDelegate):
+
+class ClipItemDelegate(QtGui.QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
         QtGui.QStyledItemDelegate.__init__(self, *args, **kwargs)
         
@@ -31,65 +32,61 @@ class ProjectItemDelegate(QtGui.QStyledItemDelegate):
         
         html = QtGui.QTextDocument()
         html.setHtml(option.text)
-        html.setTextWidth(Project.TEXTWIDTH)
-        return QtCore.QSize(Project.TEXTWIDTH + Project.PADDING, Project.CLIPSIZE)  
+        html.setTextWidth(Clip.TEXTWIDTH)
+        return QtCore.QSize(Clip.TEXTWIDTH + Clip.PADDING, Clip.CLIPSIZE)  
 
 
-class Project(QtGui.QListWidgetItem):
+class User(QtGui.QListWidgetItem):
 
     '''
-    A project is the representation of a project on the server.
+    A clip is the representation of a scene and a shot.
     '''
-    
-    TEXTWIDTH = 230
+
+    TEXTWIDTH = 50
     CLIPSIZE = 25
     PADDING = 5
     
     WIDTH = TEXTWIDTH
     
-    FORMATTER_PROJECT = unicode(util.readfile("projects/formatters/project.qthtml"))    
-
-
+    #FORMATTER_CLIP = unicode(util.readfile("storyboard/formatters/clip.qthtml"))
+    
     def __init__(self, uid, *args, **kwargs):
         QtGui.QListWidgetItem.__init__(self, *args, **kwargs)    
         
-        self.uid = uid
-        self.name = None
-        self.project3d = None
-        self.projectComp = None
-        self.selected = False
+        self.client  = None
         
+        self.uid        = uid
+        self.login      = None
+        self.ip         = None
+        self.localip    = None
+        self.project    = None
+        self.power      = None
+        self.online     = False
         
     def update(self, message, client):
-        '''
+        '''     
         Updates this item from the message dictionary supplied
         '''
-        
         self.client  = client
-               
-        if "selected" in message :
-            self.selected       = message.get('selected', False)           
-            for project in self.client.projects.projects :
-                if project != self.uid : 
-                    self.client.projects.projects[project].selected = False
-            self.client.currentProject = self
-            return
- 
-        self.name           = message['name']
-        self.project3d      = message['project3d']
-        self.projectComp    = message['projectCompo']
-        date                = message['date']      
-        self.date = QtCore.QDateTime.fromString(date, "yyyy-MM-dd hh:mm:ss") 
-        
-        color = "silver"
-        if self.selected :
-            color = "yellow"
-        self.setText(self.FORMATTER_PROJECT.format(color = color, name = self.name))
-         
-        tooltipstring = ("3d folder : %s<br/>Compo folder : %s " % (self.project3d, self.projectComp))
-        self.setToolTip(tooltipstring)
-        
 
+        self.login      = message['login']
+        self.ip         = message['ip']
+        self.localip    = message['localip']                 
+        self.project    = message['project']
+        self.power      = message['power']
+        self.online     = message['online']
+
+        
+        
+        self.setText(self.login)
+        
+        if self.online :
+            brush = QtGui.QBrush(QtGui.QColor("green"))
+        else : 
+            brush = QtGui.QBrush(QtGui.QColor("red"))
+        
+        self.setForeground(brush)
+        
         
         
     def __ge__(self, other):
@@ -104,4 +101,6 @@ class Project(QtGui.QListWidgetItem):
 
         
         # Default: Alphabetical
-        return self.date < other.date
+
+        return self.login < other.login
+        

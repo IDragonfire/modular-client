@@ -209,9 +209,11 @@ QListWidget::item:hover
 	border-radius: 3px;
 }
 
-QListWidget::item:selected, QTreeWidget::item:previously-selected
+QListWidget::item:selected
 {
 	border: none;
+	background: #505050;
+	border-radius: 3px;
 }
 
  

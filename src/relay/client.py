@@ -88,7 +88,8 @@ class npmClient(object) :
                 return
         self.answered.append(action)
        
-        self.function(self.answered, *self.args)
+        if self.function :
+            self.function(self.answered, *self.args)
         
 
         
