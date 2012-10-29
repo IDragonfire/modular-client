@@ -145,12 +145,12 @@ class Story(QtGui.QListWidgetItem):
             imagePath = os.path.join("//sledge/vol1/projects", self.parent.client.currentProject.projectComp, "Production_info/Story/images", imageName) 
         if os.path.isfile(imagePath) :
             imagePath = util.cache(os.path.join(self.parent.client.currentProject.projectComp, "storyboard"), imagePath)
-            icon = util.icon(imagePath, themed = False)
+            util.delayedicon(imagePath, self, self.parent.client)
         else :
             icon = util.icon("storyboard/no_preview.jpg")
-            
-        self.setIcon(icon)
-        QtCore.QCoreApplication.processEvents()
+
+            self.setIcon(icon)
+        #QtCore.QCoreApplication.processEvents()
         
         self.parent.getComments()
         commentText = ""

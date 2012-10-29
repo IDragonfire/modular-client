@@ -4,6 +4,7 @@ import os
 from ctypes import *
 import shutil
 
+
 def developer():
     return sys.executable.endswith("python.exe")
 
@@ -142,7 +143,9 @@ def clearDirectory(directory, confirm = True):
 
 
 # Theme and settings
-__pixmapcache = {}
+__pixmapcache = QtGui.QPixmapCache() 
+#{}
+
 __theme = None
 __themedir = None
 
@@ -230,26 +233,65 @@ def respix(url):
         return DOWNLOADED_RES_PIX[url]
     return None
 
-def pixmap(filename, themed=True, resize = False, **kwargs):
+class Thumbnailer(QtCore.QThread):
+    makeIconUpdated     = QtCore.pyqtSignal(str, QtGui.QImage, list)
+    
+    def __init__(self, client, image, filename, widget, parent = None):
+        super(Thumbnailer, self).__init__(parent)
+        self.stopped = False
+        self.completed = False
+        self.filename = filename
+        self.image = image 
+        self.client = client
+        self.widget = widget
+        self.makeIconUpdated.connect(self.client.makeIcon)
+    
+    def initialize(self, queue):
+        self.stopped = False
+        self.completed = False
+        self.queue = queue
+
+    def stop(self):
+        self.stopped = True
+
+    
+    def run(self):
+        self.process()
+        self.stop()
+
+    def process(self):
+        self.image.load(self.filename)
+        self.makeIconUpdated.emit(self.filename, self.image, [self.widget])
+   
+
+def makeIcon(filename, image, widgetlist):
+    pixmap = QtGui.QPixmap(image.size())
+    pixmap.convertFromImage(image)
+    __pixmapcache.insert(filename, pixmap)
+    icon = QtGui.QIcon(pixmap)
+    for widget in widgetlist :
+        widget.setIcon(icon)
+
+
+def pixmap(filename, themed=True, client = None, **kwargs):
     '''
     This function loads a pixmap from a themed directory, or anywhere.
     It also stores them in a cache dictionary (may or may not be necessary depending on how Qt works under the hood)
     '''
-    try:        
-        return __pixmapcache[filename]
-    except:
+    pixcache = __pixmapcache.find(filename)
+    if pixcache :
+        return pixcache
+    else :
         if themed:
             if __themedir and os.path.isfile(os.path.join(__themedir, filename)):
                 pix = QtGui.QPixmap(os.path.join(__themedir, filename))
             else:
                 pix = QtGui.QPixmap(os.path.join(COMMON_DIR, filename))
         else:
-            if resize :
-                pix = QtGui.QPixmap(filename)
-            else :
-                pix = QtGui.QPixmap(filename) #Unthemed means this can come from any location
-                            
-        __pixmapcache[filename] = pix
+            #Unthemed means this can come from any location
+            pix = QtGui.QPixmap(filename)
+
+        __pixmapcache.insert(filename, pix)
         return pix
 
 
@@ -355,15 +397,28 @@ def readfile(filename, themed = True):
 
 
 
-def icon(filename, themed=True, pix = False, resize = False, **kwargs):
+def icon(filename, themed=True, pix = False, **kwargs):
     '''
     Convenience method returning an icon from a cached, optionally themed pixmap as returned by the util.pixmap(...) function
     '''
     if pix :
-        return pixmap(filename, themed, resize, **kwargs)
+        return pixmap(filename, themed, **kwargs)
     else :
-        return QtGui.QIcon(pixmap(filename, themed, resize, **kwargs))
+        return QtGui.QIcon(pixmap(filename, themed, **kwargs))
  
+
+def delayedicon(filename, widget, client):   
+    pixcache = __pixmapcache.find(filename)
+    if  pixcache :
+        icon = QtGui.QIcon(pixcache)
+        widget.setIcon(icon)
+    else :
+        image = QtGui.QImage()
+        thread = Thumbnailer(client, image, filename, widget)
+        client.threads.append(thread)
+        thread.start()
+   
+    
     
 def sound(filename, themed = True):
     '''
