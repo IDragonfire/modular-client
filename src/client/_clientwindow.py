@@ -53,6 +53,7 @@ class ClientWindow(FormClass, BaseClass):
     mayaAnimUpdated = QtCore.pyqtSignal(dict)
     commentUpdated  = QtCore.pyqtSignal(dict)
     powerUpdated    = QtCore.pyqtSignal()
+    makeIconUpdated = QtCore.pyqtSignal(str, QtGui.QImage, list)
 
     
     
@@ -63,6 +64,9 @@ class ClientWindow(FormClass, BaseClass):
         
         #Can we really close this ?
         self.canClose = False
+        
+        
+        self.threads = []
         
         # Hook to Qt's application management system
         QtGui.QApplication.instance().aboutToQuit.connect(self.cleanup)
@@ -78,6 +82,9 @@ class ClientWindow(FormClass, BaseClass):
         self.progress = QtGui.QProgressDialog()
         self.progress.setMinimum(0)
         self.progress.setMaximum(0)
+        
+        #connect the utility to load image from threads
+        self.makeIconUpdated.connect(self.makeIcon)
         
         #Tray icon
         self.tray = QtGui.QSystemTrayIcon()
@@ -146,6 +153,10 @@ class ClientWindow(FormClass, BaseClass):
         self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.storyboardTab), util.icon("client/print.png"))
         self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.usersTab), util.icon("client/customers.png"))       
         #self.mainTabs.setTabEnabled(self.mainTabs.indexOf(self.tourneyTab), False)
+
+
+    def makeIcon(self, filename, image, widgetlist):
+        util.makeIcon(filename, image, widgetlist)
 
     def trayEvent(self, reason):
         if reason == 2 :

@@ -28,6 +28,7 @@ import util
 import logging
 import time
 import json
+import random
 
 logger= logging.getLogger("npm.client")
 logger.setLevel(logging.DEBUG)
@@ -38,10 +39,9 @@ class npmClient(object) :
 
         self.blockSize = 0   
         
-
         self.app = app
+        self.requests = {}
         
-        self.answered = []
         self.breakWait = False
         self.socket.readyRead.connect(self.readFromServer)
         self.socket.disconnected.connect(self.disconnectedFromServer)
@@ -51,14 +51,15 @@ class npmClient(object) :
             self.displayMessage("error", "Cannot connect to the server.")
             self.stop()
 
-
-     
     def stop(self) :
+        self.requests = {}
         if self.socket.state() == QtNetwork.QLocalSocket.ConnectedState:
             self.socket.disconnectFromServer()
         
+    def cleanRequests(self):
+        self.requests = {}
+    
     def readFromServer(self) :
-        
         ins = QtCore.QDataStream(self.socket)        
         ins.setVersion(QtCore.QDataStream.Qt_4_2)
         
@@ -69,7 +70,7 @@ class npmClient(object) :
                 self.blockSize = ins.readUInt32()            
             if self.socket.bytesAvailable() < self.blockSize:
                 return
-            
+
             action = ins.readQString()
             self.process(action)
             self.blockSize = 0
@@ -78,22 +79,21 @@ class npmClient(object) :
         '''
         A fairly pythonic way to process received strings as JSON messages.
         '''
-        
         action = json.loads(action)
-        
         if "command" in action :
             if action["command"] == "notice" :
                 self.displayMessage(action["style"], action["text"])
                 self.breakWait = True
-                return
-        self.answered.append(action)
-       
-        if self.function :
-            self.function(self.answered, *self.args)
+                return        
+        requestid = action.get("requestid", None)
         
-
+        if requestid :
+            if requestid in self.requests :               
+                function = self.requests[requestid]["function"]
+                args     = self.requests[requestid]["args"]
+                function(action, *args)
         
-    def writeToServer(self, action, function, *args, **kw):
+    def writeToServer(self, action, requestid, function, *args, **kw):
         '''
         This method is the workhorse of the client, and is used to send messages, queries and commands to the server.
         '''
@@ -102,25 +102,22 @@ class npmClient(object) :
         block = QtCore.QByteArray()
         out = QtCore.QDataStream(block, QtCore.QIODevice.ReadWrite)
         out.setVersion(QtCore.QDataStream.Qt_4_2)
-
         out.writeUInt32(0)
         out.writeQString(action)
-
         out.device().seek(0)        
         out.writeUInt32(block.size() - 4)
-        self.bytesToSend = block.size() - 4
-        
+        self.bytesToSend = block.size() - 4       
         self.socket.write(block)
-        self.answered = []
-        self.function = function
-        self.args = args
-        
+        self.requests[requestid] = dict(function=function, args = args)     
 
     def send(self, message, function, *args):
+        #we create an id for this request.
+        requestid = int(random.getrandbits(32))
+        message["requestid"] = requestid 
+        
         data = json.dumps(message)
         logger.info("Outgoing JSON Message: " + data)
-        self.writeToServer(data, function, *args)
-
+        self.writeToServer(data, requestid, function, *args)
 
     def askQuestion(self, question):
         if self.app :
@@ -133,9 +130,7 @@ class npmClient(object) :
                 return False
             else:
                 return False
-
         return False
-
 
     def displayMessage(self, style, message):
         if style == "error" :
