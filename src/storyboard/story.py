@@ -39,7 +39,7 @@ class textEditorDelegate(QtGui.QWidget):
 class StoryItemDelegate(QtGui.QStyledItemDelegate):
     def __init__(self, parent, *args, **kwargs):
         QtGui.QStyledItemDelegate.__init__(self, parent, *args, **kwargs)       
-        self.parent = parent
+        self.clip = parent
         
     def paint(self, painter, option, index, *args, **kwargs):
         self.initStyleOption(option, index)     
@@ -86,20 +86,19 @@ class StoryItemDelegate(QtGui.QStyledItemDelegate):
 
     def setEditorData( self, editor, index ):
         value = index.model().data(index, QtCore.Qt.EditRole)
-        #comments = value.getComments()
-        for comment in value.comments :
-            if comment.useruid in value.client.users.users :
-                if value.client.users.users[comment.useruid].login == value.client.login :
-                    editor.setText(comment.comment)
-                    return
-        editor.setText("")
-        return
+        if value :
+            editor.setText(value)
+            return
+        else :
+            editor.setText("")
+            return            
+
 
     def setModelData(self, editor, model, index):
         value = editor.editor.toPlainText()
         item = index.model().data(index, QtCore.Qt.UserRole) 
         if editor.confirmed :
-            self.parent.client.send(dict(command="comments", action="submit", type = 0, comment=value, scene = item.parent.scene, shot = item.parent.shot))
+            self.clip.client.send(dict(command="comments", action="submit", type = 0, comment=value, scene = item.clip.scene, shot = item.clip.shot))
 
     def commitAndCloseEditor(self):
         editor = self.sender()
@@ -127,11 +126,14 @@ class Story(QtGui.QListWidgetItem):
     FORMATTER_CLIP      = unicode(util.readfile("storyboard/formatters/story.qthtml"))
     FORMATTER_COMMENT   = unicode(util.readfile("storyboard/formatters/comment.qthtml"))
     
-    def __init__(self, parent, *args, **kwargs):
+    def __init__(self, clip, *args, **kwargs):
         QtGui.QListWidgetItem.__init__(self, *args, **kwargs)    
-        self.parent = parent
+        self.clip = clip
+        self.client = self.clip.client
         self.setFlags(QtCore.Qt.ItemIsEditable | QtCore.Qt.ItemIsEnabled | QtCore.Qt.ItemIsSelectable | QtCore.Qt.ItemIsDragEnabled)
         self.viewText = ""
+      
+        self.comments = {}
       
     def update(self):
         '''     
@@ -140,33 +142,45 @@ class Story(QtGui.QListWidgetItem):
         imagePath = None
         icon = None
         
-        if self.parent.client.currentProject.projectComp != None :
-            imageName = ( "SC"+str(self.parent.scene).zfill(2)+"_"+str(self.parent.shot).zfill(2) + ".jpg") 
-            imagePath = os.path.join("//sledge/vol1/projects", self.parent.client.currentProject.projectComp, "Production_info/Story/images", imageName) 
+        if self.clip.client.currentProject.projectComp != None :
+            imageName = ( "SC"+str(self.clip.scene).zfill(2)+"_"+str(self.clip.shot).zfill(2) + ".jpg") 
+            imagePath = os.path.join("//sledge/vol1/projects", self.clip.client.currentProject.projectComp, "Production_info/Story/images", imageName) 
         if os.path.isfile(imagePath) :
-            imagePath = util.cache(os.path.join(self.parent.client.currentProject.projectComp, "storyboard"), imagePath)
-            util.delayedicon(imagePath, self, self.parent.client)
+            imagePath = util.cache(os.path.join(self.clip.client.currentProject.projectComp, "storyboard"), imagePath)
+            util.delayedicon(imagePath, self, self.clip.client)
         else :
             icon = util.icon("storyboard/no_preview.jpg")
 
             self.setIcon(icon)
-        #QtCore.QCoreApplication.processEvents()
-        
-        self.parent.getComments()
+
         commentText = ""
-        for comment in self.parent.comments :
-            user = "Unknown"
-            if comment.useruid in self.parent.client.users.users : 
-                user = self.parent.client.users.users[comment.useruid].login
-            commentText = commentText + self.FORMATTER_COMMENT.format(comment = comment.comment, author = user, date = comment.date.toString("dd-MM hh:mm"))
+        self.viewText = (self.FORMATTER_CLIP.format(comments = commentText, scene = str(self.clip.scene).zfill(3), shot = str(self.clip.shot).zfill(3), inClip=self.clip.inClip, outClip=self.clip.outClip ))
+
+
+    def updateComment(self, comment):
+        uid = comment.useruid
+        self.comments[uid] = comment
+        self.updateComments()
         
-        self.viewText = (self.FORMATTER_CLIP.format(comments = commentText, scene = str(self.parent.scene).zfill(3), shot = str(self.parent.shot).zfill(3), inClip=self.parent.inClip, outClip=self.parent.outClip ))
+
+    def updateComments(self):
+        commentText = ""
+        
+        for comment in self.comments :
+            user = "Unknown"
+            if self.comments[comment].useruid in self.clip.client.users.users :
+                user = self.clip.client.users.users[self.comments[comment].useruid].login            
+            commentText = commentText + self.FORMATTER_COMMENT.format(comment = self.comments[comment].comment, author = user, date = self.comments[comment].date.toString("dd-MM hh:mm")) + "<br>"  
+        self.viewText = (self.FORMATTER_CLIP.format(comments = commentText, scene = str(self.clip.scene).zfill(3), shot = str(self.clip.shot).zfill(3), inClip=self.clip.inClip, outClip=self.clip.outClip ))    
 
     def data(self, role):
         if role == QtCore.Qt.DisplayRole:
             return self.display()  
         elif role == QtCore.Qt.EditRole :
-            return self.parent
+            if self.client.getUserUid() in self.comments :
+                return self.comments[self.client.getUserUid()].comment
+            else :
+                return None
         elif role == QtCore.Qt.UserRole :
             return self
         return super(Story, self).data(role)
@@ -175,7 +189,7 @@ class Story(QtGui.QListWidgetItem):
         return self.viewText
 
     def pressed(self, item):
-        menu = QtGui.QMenu(self.parent.client)
+        menu = QtGui.QMenu(self.clip.client)
         actionUploadImage = QtGui.QAction("Upload image", menu)
         actionUploadImage.triggered.connect(self.uploadImage)
         menu.addAction(actionUploadImage)
@@ -185,12 +199,12 @@ class Story(QtGui.QListWidgetItem):
         compProject = os.path.join("//sledge/vol1/projects", self.client.currentProject.projectComp, "Production_info/Story/images") 
         options = QtGui.QFileDialog.Options()            
         options |= QtGui.QFileDialog.DontUseNativeDialog  
-        fileName = QtGui.QFileDialog.getOpenFileName(self.parent.client,
+        fileName = QtGui.QFileDialog.getOpenFileName(self.clip.client,
         "Select the picture",
         compProject,
         "Jpg Files (*.jpg);;Png Files (*.png);;All Files (*)", options) 
         if fileName:
-            self.client.send(dict(command="storyboard", action="image", file = fileName, clipuid = self.parent.uid))
+            self.client.send(dict(command="storyboard", action="image", file = fileName, clipuid = self.clip.uid))
   
     def __ge__(self, other):
         ''' Comparison operator used for item list sorting '''        
@@ -198,8 +212,8 @@ class Story(QtGui.QListWidgetItem):
 
     def __lt__(self, other):
         ''' Comparison operator used for item list sorting '''        
-        if not self.parent.client: return True # If not initialized...
-        if not other.parent.client: return False;
+        if not self.clip.client: return True # If not initialized...
+        if not other.clip.client: return False;
    
         # Default: Alphabetical
-        return self.parent.start < other.parent.start
+        return self.clip.start < other.clip.start

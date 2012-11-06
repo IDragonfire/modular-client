@@ -3,7 +3,9 @@ import util
 
 
 class Comment(QtCore.QObject):
+
     def __init__(self, uid, *args, **kwargs):
+        QtCore.QObject.__init__(self, *args, **kwargs)
         self.uid        = uid
         self.clipuid    = None
         self.useruid    = None
@@ -24,15 +26,20 @@ class Comment(QtCore.QObject):
         self.typeuid    = message['typeuid']
         self.comment    = message['comment']
         date            = message['date']      
-        self.date = QtCore.QDateTime.fromString(date, "yyyy-MM-dd hh:mm:ss") 
+        self.date       = QtCore.QDateTime.fromString(date, "yyyy-MM-dd hh:mm:ss") 
         self.message    = message
 
 
 class comments(QtCore.QObject):
-    def __init__(self, client, *args, **kwargs):
+    commentInfoUpdated     = QtCore.pyqtSignal(Comment)
+    
+    def __init__(self, client, *args, **kwargs):       
+        QtCore.QObject.__init__(self, *args, **kwargs)
+        
         self.client = client
         self.comments = {}      
         self.client.commentUpdated.connect(self.processCommentInfo)       
+        #self.client.clips.clipUpdated.connect(self.clipUpdated)
 
     def processCommentInfo(self, message):
         uid = message["uid"]       
@@ -42,14 +49,10 @@ class comments(QtCore.QObject):
             self.comments[uid] = Comment(uid)
             self.comments[uid].update(message, self.client)
             
-        #update clips comments
-        clipUid = self.comments[uid].clipuid
-        if clipUid in self.client.storyboard.clips :
-            self.client.storyboard.clips[clipUid].storyItem.update()
-            
-        if clipUid in self.client.edits.clips :
-            self.client.edits.clips[clipUid].updateComment()
-                
+        self.commentInfoUpdated.emit(self.comments[uid])
+
+
+    
     def getComments(self, clipuid, typeuid):
         comments = []
         for uid in self.comments :
@@ -57,4 +60,6 @@ class comments(QtCore.QObject):
             if comment.clipuid == clipuid and comment.typeuid == typeuid :
                 comments.append(comment)
         return comments
+
+        
         

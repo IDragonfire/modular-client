@@ -11,7 +11,7 @@ class TimelineItemDelegate(QtGui.QStyledItemDelegate):
     def paint(self, painter, option, index, *args, **kwargs):
         self.initStyleOption(option, index)    
         item = index.model().data(index, QtCore.Qt.UserRole)
-        zoom = max((item.outClip - item.inClip)+item.client.edits.zoom ,1)
+        zoom = max((item.clip.outClip - item.clip.inClip)+item.client.edits.zoom ,1)
         painter.save()    
         html = QtGui.QTextDocument()
         html.setHtml(option.text)
@@ -45,7 +45,7 @@ class TimelineItemDelegate(QtGui.QStyledItemDelegate):
         
 
         html = QtGui.QTextDocument()
-        html.setHtml(self.FORMATTER_TIMELINERANGE.format(width = zoom -10, inClip = str(item.inClip).zfill(2), outClip=str(item.outClip).zfill(2)))
+        html.setHtml(self.FORMATTER_TIMELINERANGE.format(width = zoom -10, inClip = str(item.clip.inClip).zfill(2), outClip=str(item.clip.outClip).zfill(2)))
 
         painter.translate(0, 70)
         clip = QtCore.QRectF(0, 0, option.rect.width(), 30)
@@ -56,7 +56,7 @@ class TimelineItemDelegate(QtGui.QStyledItemDelegate):
         self.initStyleOption(option, index)
         item = index.model().data(index, QtCore.Qt.UserRole)   
         zoom = item.client.edits.zoom
-        return QtCore.QSize(max((item.outClip - item.inClip) + zoom, 1) , 100 + zoom)  
+        return QtCore.QSize(max((item.clip.outClip - item.clip.inClip) + zoom, 1) , 100 + zoom)  
 
 
 class ClipItemDelegate(QtGui.QStyledItemDelegate):
@@ -94,7 +94,7 @@ class treeClip(QtGui.QTreeWidgetItem):
         self.setForeground(0, QtGui.QBrush(QtGui.QColor("white")))
 
     def update(self):
-        self.setText(0, str(self.parent.scene).zfill(3) + ' - ' + str(self.parent.shot).zfill(3))
+        self.setText(0, str(self.parent.clip.scene).zfill(3) + ' - ' + str(self.parent.clip.shot).zfill(3))
         
 
     def __ge__(self, other):
@@ -105,10 +105,10 @@ class treeClip(QtGui.QTreeWidgetItem):
     def __lt__(self, other):
         ''' Comparison operator used for item list sorting '''        
 
-        if self.parent.scene == other.parent.scene :
-            return self.parent.shot > other.parent.shot
+        if self.parent.clip.scene == other.parent.clip.scene :
+            return self.parent.clip.shot > other.parent.clip.shot
         else :
-            return self.parent.scene > other.parent.scene
+            return self.parent.clip.scene > other.parent.clip.scene
 
 class animTreeItem(QtGui.QTreeWidgetItem):
     ''' Item for animation scenes '''
@@ -121,7 +121,7 @@ class animTreeItem(QtGui.QTreeWidgetItem):
         self.filename   = QtGui.QTreeWidgetItem(self)
         self.version    = QtGui.QTreeWidgetItem(self)
         self.state      = QtGui.QTreeWidgetItem(self)
-        self.comments   = QtGui.QTreeWidgetItem(self)
+        self.date       = QtGui.QTreeWidgetItem(self)
         self.user       = QtGui.QTreeWidgetItem(self)
         #self.setFont(0, QtGui.QFont("verdana", 10))       
         #self.setForeground(0, QtGui.QBrush(QtGui.QColor("white")))
@@ -129,15 +129,17 @@ class animTreeItem(QtGui.QTreeWidgetItem):
         self.item = item
         self.setText(0, self.item.filename + " (" + str(self.item.version) + ")")
 
-        self.path.setText       (0,"file path : "   + item.path         )
-        self.filename.setText   (0,"file name : "   + item.filename     )
-        self.version.setText    (0,"version : "     + str(item.version) )
-        self.state.setText      (0,"state : "       + str(item.state)   )
-        self.comments.setText   (0,"comments : "    + str(item.comments))
+        self.path.setText       (0,"file path : "   + item.path                         )
+        self.filename.setText   (0,"file name : "   + item.filename                     )
+        self.version.setText    (0,"version : "     + str(item.version)                 )
+        self.state.setText      (0,"state : "       + str(item.state)                   )
+        self.date.setText       (0,"comments : "    + item.date.toString("dd-MM hh:mm") )
         user = "Unknown"
-        if item.userUid in self.item.client.users.users : 
+
+        if item.userUid in self.item.client.users.users :
+                 
             user = self.item.client.users.users[item.userUid].login
-        self.user.setText       (0,"user : "        + user              )
+        self.user.setText       (0,"user : "        + user                              )
 
 
 class ClipTimeline(QtGui.QListWidgetItem):
@@ -162,7 +164,7 @@ class ClipTimeline(QtGui.QListWidgetItem):
 
 
     def update(self):
-        self.setText(self.FORMATTER_CLIP.format(scene = str(self.parent.scene).zfill(3), shot = str(self.parent.shot).zfill(3), inClip = str(self.parent.inClip).zfill(2), outClip = str(self.parent.outClip).zfill(2), handleIn = str(self.parent.handleIn).zfill(2), handleOut = str(self.parent.handleOut).zfill(2)))
+        self.setText(self.FORMATTER_CLIP.format(scene = str(self.parent.clip.scene).zfill(3), shot = str(self.parent.clip.shot).zfill(3), inClip = str(self.parent.clip.inClip).zfill(2), outClip = str(self.parent.clip.outClip).zfill(2), handleIn = str(self.parent.clip.handleIn).zfill(2), handleOut = str(self.parent.clip.handleOut).zfill(2)))
 
     def __ge__(self, other):
         ''' Comparison operator used for item list sorting '''        
@@ -174,7 +176,7 @@ class ClipTimeline(QtGui.QListWidgetItem):
         if not other.parent.client: return False;
 
         # Default: Alphabetical
-        return self.parent.start < other.parent.start
+        return self.parent.clip.start < other.parent.clip.start
 
 class Clip(QtGui.QListWidgetItem):
 
@@ -189,15 +191,12 @@ class Clip(QtGui.QListWidgetItem):
     
     FORMATTER_CLIP = unicode(util.readfile("edits/formatters/clip.qthtml"))
     
-    def __init__(self, uid, *args, **kwargs):
+    def __init__(self, clip, *args, **kwargs):
         QtGui.QListWidgetItem.__init__(self, *args, **kwargs)    
         
-        self.client  = None
-        
-        self.uid = uid
-        
-        self.scene = None
-        self.shot = None
+        self.clip = clip
+        self.client = self.clip.client
+
        
         self.treeItem       = treeClip(self)
         self.timelineItem   = ClipTimeline(self)
@@ -207,75 +206,48 @@ class Clip(QtGui.QListWidgetItem):
         self.animTreeItem.setText(0, "Animation Scenes")
         self.commentsItem.setText(0, "Comments")
         
-        #self.treeItem.addChild(self.animTreeItem)
-        self.inClip     = 0
-        self.outClip    = 0
-        self.start      = 0
-        self.end        = 0
-        self.duration   = 0
-        self.handleIn   = 0
-        self.handleOut  = 0
-        self.comments   = None
+        self.treeItem.addChild(self.animTreeItem)
+        
+        self.comments = {}
         self.animScene  = {}
     
-    def addAnimScene(self, scene):
+    def update(self):
+        '''     
+        Updates this item from the message dictionary supplied
+        '''
+
+        #remove all comments
+        self.commentsItem.takeChildren()
+
+        self.treeItem.update()
+        self.timelineItem.update()
+        
+        self.setText(self.FORMATTER_CLIP.format(scene = str(self.clip.scene).zfill(3), shot = str(self.clip.shot).zfill(3), inClip = str(self.clip.inClip).zfill(2), outClip = str(self.clip.outClip).zfill(2), handleIn = str(self.clip.handleIn).zfill(2), handleOut = str(self.clip.handleOut).zfill(2)))
+    
+    
+    def updateScene3d(self, scene):
         if scene.uid in self.animScene :
             self.animScene[scene.uid].update(scene)
         else :
             self.animScene[scene.uid] = animTreeItem(self.animTreeItem, scene)
             self.animTreeItem.addChild(self.animScene[scene.uid])
-            self.animScene[scene.uid].update(scene)
-            
-
-    def update(self, message, client):
-        '''     
-        Updates this item from the message dictionary supplied
-        '''
-        self.client     = client
-        self.scene      = message['scene']
-        self.shot       = message['shot']
-        self.inClip     = message['inClip']
-        self.outClip    = message['outClip']
-        self.handleIn   = message['handleIn']
-        self.handleOut  = message['handleOut']
-        self.start      = message['start']
-        self.end        = message['end']
-        self.duration   = message['duration']
-
-        #remove all comments
-        self.commentsItem.takeChildren()
-        
-        self.comments = self.client.comments.getComments(self.uid, 0)  
-        for comment in self.comments :
-            user = "Unknown"
-            if comment.useruid in self.client.users.users : 
-                user = self.client.users.users[comment.useruid].login
-                c = QtGui.QTreeWidgetItem(self.commentsItem)
-                print c
-                print comment.comment
-                c.setText(0, (user + " (" + comment.date.toString("dd-MM hh:mm") + ") :" + comment.comment))
-        
-        
-        self.treeItem.update()
-        self.timelineItem.update()
-        
-        self.setText(self.FORMATTER_CLIP.format(scene = str(self.scene).zfill(3), shot = str(self.shot).zfill(3), inClip = str(self.inClip).zfill(2), outClip = str(self.outClip).zfill(2), handleIn = str(self.handleIn).zfill(2), handleOut = str(self.handleOut).zfill(2)))
+            self.animScene[scene.uid].update(scene)        
     
-    def updateComment(self):
-        #remove all comments
-        self.commentsItem.takeChildren()
-        
-        self.comments = self.client.comments.getComments(self.uid, 0)  
-        for comment in self.comments :
-            user = "Unknown"
-            if comment.useruid in self.client.users.users : 
-                user = self.client.users.users[comment.useruid].login
-                c = QtGui.QTreeWidgetItem(self.commentsItem)
+    def updateComment(self, comment):
+        uid = comment.useruid
+        self.comments[uid] = comment
+        self.updateComments()
 
-                c.setText(0, (user + " (" + comment.date.toString("dd-MM hh:mm") + ") : " + comment.comment))
         
-            
-        
+    def updateComments(self):
+        self.commentsItem.takeChildren()
+        for uid in self.comments :
+            comment = self.comments[uid]
+            user = "Unknown"
+            if comment.useruid in self.clip.client.users.users :
+                user = self.clip.client.users.users[comment.useruid].login
+            c = QtGui.QTreeWidgetItem(self.commentsItem)          
+            c.setText(0, (user + " (" + comment.date.toString("dd-MM hh:mm") + ") : " + comment.comment))
         
     def __ge__(self, other):
         ''' Comparison operator used for item list sorting '''        
@@ -289,4 +261,4 @@ class Clip(QtGui.QListWidgetItem):
 
         # Default: Alphabetical
 
-        return self.start < other.start
+        return self.clip.start < other.clip.start

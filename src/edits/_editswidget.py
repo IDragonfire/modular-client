@@ -22,91 +22,83 @@ class EditsWidget(FormClass, BaseClass):
 
         self.clips = {}
         self.zoom = 1
-
+#
         self.shotList.setItemDelegate(EditClipItemDelegate(self))
-        self.clipList.setItemDelegate(ClipItemDelegate(self))
+#        self.clipList.setItemDelegate(ClipItemDelegate(self))
         self.timelineList.setItemDelegate(TimelineItemDelegate(self))
-
-        self.clipList.itemClicked.connect(self.clipClicked)
-        self.clipList.itemDoubleClicked.connect(self.clipDoubleClicked)
-        
+#
+#        self.clipList.itemClicked.connect(self.clipClicked)
+#        self.clipList.itemDoubleClicked.connect(self.clipDoubleClicked)
+#        
         self.zoomSlider.sliderMoved.connect(self.zoomChanged)
-        
+#        
         self.validateEditButton.setVisible(0)
         self.shotList.setVisible(0)
-        
-        self.filterScene.textChanged.connect(self.eventFilterChanged)      
-        
+#        
+#        self.filterScene.textChanged.connect(self.eventFilterChanged)      
+#        
         self.client.editsUpdated.connect(self.processEditsInfo)       
-        self.client.clipUpdated.connect(self.processClipInfo)
-        
         self.client.powerUpdated.connect(self.powerUpdate)
         
-
+        self.client.clips.clipUpdated.connect(self.processClipInfo)
+        self.client.comments.commentInfoUpdated.connect(self.processCommentInfo)
+        self.client.scenes3d.scene3dInfoUpdated.connect(self.processScene3dInfo)
+   
     def zoomChanged(self, value):
         self.zoom = value
-        self.timelineList.viewport().update()
-        
+        self.timelineList.viewport().update()     
         self.timelineList.setIconSize(QtCore.QSize(value,0))
-        #for uid in self.clips :
-            #self.clips[uid].timelineItem.setIconSize(0,0,0,0)
-        
-        QtCore.QCoreApplication.processEvents()
-         
+     
     def powerUpdate(self):
         if self.client.power >= 16 :
             self.parseXmlButton.pressed.connect(self.submitXml)
             self.validateEditButton.pressed.connect(self.validateEdit)
         else :
             self.parseXmlButton.setVisible(0)    
-
-    def clipClicked(self, item):
-        ''' we have selected a clip'''
-        self.shotTree.setCurrentItem(item.treeItem)
-
-    def clipDoubleClicked(self, item):
-        ''' we have double clicked a clip'''
-        treeItem = item.treeItem
-        self.shotTree.setCurrentItem(treeItem)
-        
-        item.animTreeItem.setExpanded(1)
-        for uid in item.animScene :
-            item.animScene[uid].setExpanded(1)
-        
-
-    def eventFilterChanged(self):
-        filterText = self.filterScene.text().strip(string.ascii_letters)
-        if filterText != "" :
-            for uid in self.clips :
-                
-                if self.clips[uid].scene == int(filterText) :
-                    self.clips[uid].setHidden(0)
-                else :
-                    self.clips[uid].setHidden(1)
-        else :
-            for uid in self.clips :
-                self.clips[uid].setHidden(0)
+#
+#    def clipClicked(self, item):
+#        ''' we have selected a clip'''
+#        self.shotTree.setCurrentItem(item.treeItem)
+#
+#    def clipDoubleClicked(self, item):
+#        ''' we have double clicked a clip'''
+#        treeItem = item.treeItem
+#        self.shotTree.setCurrentItem(treeItem)
+#        
+#        item.animTreeItem.setExpanded(1)
+#        for uid in item.animScene :
+#            item.animScene[uid].setExpanded(1)
+#        
+#
+  
     
-    
-    
-    def processClipInfo(self, message):
-        uid = message["uid"]
+    def processClipInfo(self, clip):
+        uid = clip.uid
 
         if uid in self.clips: 
-            self.clips[uid].update(message, self.client) 
+            self.clips[uid].update() 
         else :
-            self.clips[uid] = Clip(uid)
+            self.clips[uid] = Clip(clip)
 
-            self.clipList.addItem(self.clips[uid])
+            
             self.timelineList.addItem(self.clips[uid].timelineItem)
 
             self.shotTree.addTopLevelItem(self.clips[uid].treeItem)
            
-            self.clips[uid].treeItem.setExpanded(1)            
-            self.clips[uid].update(message, self.client)
-        
+            #self.clips[uid].treeItem.setExpanded(1)            
+            self.clips[uid].update()
 
-
+    def processCommentInfo(self, comment):
+        if comment.typeuid == 0 :
+            uid = comment.clipuid
+            if uid in self.clips:
+                self.clips[uid].updateComment(comment)
+    
+    def processScene3dInfo(self, scene3d):
+        uid = scene3d.clipUid
+        if uid in self.clips:
+            self.clips[uid].updateScene3d(scene3d)   
+    
     def processEditsInfo(self, message):
         self.topTabs.setVisible(0)
         self.shotList.setVisible(1)
@@ -125,8 +117,7 @@ class EditsWidget(FormClass, BaseClass):
                 self.shotList.addItem(self.clips[uid])
                 self.clips[uid].update(clip, self.client)
         self.validateEditButton.setVisible(1)
-         
-        
+    
     def validateEdit(self):
         clips = []
         for clip in self.clips :

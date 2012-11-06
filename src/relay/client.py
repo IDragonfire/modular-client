@@ -118,6 +118,7 @@ class npmClient(object) :
         data = json.dumps(message)
         logger.info("Outgoing JSON Message: " + data)
         self.writeToServer(data, requestid, function, *args)
+        return requestid
 
     def askQuestion(self, question):
         if self.app :

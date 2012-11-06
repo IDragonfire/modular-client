@@ -11,7 +11,6 @@ from distutils.core import setup
 import py2exe
 import shutil
 import os
-import matplotlib
 
 # The targets to build
 BUILD = int(open("build.dat").read())+1
@@ -26,8 +25,8 @@ print "BUILD: " + str(BUILD)
 
 t1 = {
       "script":"main.py",
-      "dest_base":"FAForever",
-      "icon_resources" : [(0, "_lib/faf.ico")]
+      "dest_base":"npm",
+      "icon_resources" : [(0, "_lib/npm.ico")]
       }
 
 
@@ -43,7 +42,7 @@ if (os.path.isdir("dist")):
 shutil.copytree("_lib", "dist")             #Lib directory needs to contain MSVCRT90.dll and FreeImage.dll, plus Qt Image format plugins etc.
 shutil.copytree("_res", "dist/_res")
 
-VERSION_STRING = "0.7." + str(BUILD)
+VERSION_STRING = "0.0." + str(BUILD)
 
 versionfile = open("dist/version", "w")
 versionfile.write(VERSION_STRING)
@@ -54,16 +53,15 @@ versionfile.close()
 setup(      
       windows = [t1], # targets to build
       version = VERSION_STRING,
-      description = "Forged Alliance Forever",
-      name = "Forged Alliance Forever",
+      description = "Nozon Project Manager Client",
+      name = "Nozon Project Manager",
       options = {
                  "py2exe": {
                             "includes":["sip"], "dll_excludes": ["MSVCP90.dll", "POWRPROF.dll", "API-MS-Win-Core-LocalRegistry-L1-1-0.dll", "MPR.dll"],
 			    'excludes': ['_gtkagg', '_tkagg'],                          
                            }
                 }, 
-      data_files=matplotlib.get_py2exe_datafiles(),
-      zipfile = "FAForever.lib"
+      zipfile = "npm.lib"
     )
 
 print "Clearing and copying..."

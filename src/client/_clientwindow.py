@@ -87,7 +87,8 @@ class ClientWindow(FormClass, BaseClass):
         self.makeIconUpdated.connect(self.makeIcon)
         
         #Tray icon
-        self.tray = QtGui.QSystemTrayIcon()
+        self.tray = QtGui.QSystemTrayIcon(self)
+        self.tray.setToolTip("Nozon Project Manager")
         self.tray.setIcon(util.icon("client/tray_icon.png"))
         self.tray.activated.connect(self.trayEvent)
         self.tray.show()
@@ -115,12 +116,7 @@ class ClientWindow(FormClass, BaseClass):
         self.resizeTimer = QtCore.QTimer(self)
         self.resizeTimer.timeout.connect(self.resized)
         self.preferedSize = 0
-               
-
-        
-        #Local Replay Server (and relay)
-        #self.replayServer = fa.replayserver.ReplayServer(self)
-        
+                      
         #Local Relay Server
         self.relayServer = relay.relayserver.RelayServer(self)
         
@@ -131,6 +127,7 @@ class ClientWindow(FormClass, BaseClass):
 
         #Wire all important signals
         self.mainTabs.currentChanged.connect(self.mainTabChanged)
+        self.powerUpdated.connect(self.powerUpdate)
         
         #Verrry important step!
         self.loadSettings()            
@@ -155,6 +152,13 @@ class ClientWindow(FormClass, BaseClass):
         #self.mainTabs.setTabEnabled(self.mainTabs.indexOf(self.tourneyTab), False)
 
 
+    def powerUpdate(self):
+        '''Triggered when the user got new power'''
+        if self.power >= 32 :
+            self.actionRestartAllClients.setEnabled(1)
+        else :
+            self.actionRestartAllClients.setEnabled(1)
+
     def makeIcon(self, filename, image, widgetlist):
         util.makeIcon(filename, image, widgetlist)
 
@@ -178,27 +182,18 @@ class ClientWindow(FormClass, BaseClass):
         import storyboard
         import users
         import comments
-#        import stats
-#        import vault
-#        import games
-#        import tutorials
+        import clips
         
-        self.projects = projects.Projects(self)
-        self.edits = edits.Edits(self)
-        self.scenes3d = scenes3d.Scenes3d(self)
+        self.clips      = clips.Clips(self)
+        self.comments   = comments.Comments(self)
+        self.scenes3d   = scenes3d.Scenes3d(self)
+        self.projects   = projects.Projects(self)
+        self.edits      = edits.Edits(self)
         self.storyboard = storyboard.Storyboard(self)
-        self.users = users.Users(self)
-        self.comments = comments.Comments(self)
-        # Initialize chat
-#        self.chat = chat.Lobby(self)
-    
-        #build main window with the now active client                  
-#        self.ladder = stats.Stats(self)
-#        self.games = games.Games(self)
-#        self.tourneys = tourneys.Tourneys(self)
-#        self.vault = vault.MapVault(self)
-#        self.replays = replays.Replays(self)
-#        self.tutorials = tutorials.Tutorials(self)
+        self.users      = users.Users(self)
+        
+        
+
 
 
     @QtCore.pyqtSlot()
@@ -268,6 +263,10 @@ class ClientWindow(FormClass, BaseClass):
         self.doneresize.emit()
      
     def initMenus(self):
+                
+        self.actionRestartAllClients.triggered.connect(self.restartClients)
+        self.actionRestartAllClients.setEnabled(0)
+        
         self.actionLinkWebsite.triggered.connect(self.linkWebsite)
         self.actionLinkWiki.triggered.connect(self.linkWiki)
 
@@ -303,6 +302,9 @@ class ClientWindow(FormClass, BaseClass):
         self.menuTheme.addAction("Reload Stylesheet", lambda: self.setStyleSheet(util.readstylesheet("client/client.css")))
         
         
+    @QtCore.pyqtSlot()
+    def restartClients(self):
+        self.send(dict(command="admin", action="restart_all"))
         
     @QtCore.pyqtSlot()
     def updateOptions(self):
@@ -374,6 +376,12 @@ class ClientWindow(FormClass, BaseClass):
         dialog = util.loadUi("client/about.ui")
         dialog.exec_()
         
+        
+    def getUserUid(self):
+        for uid in self.users.users :
+            if self.users.users[uid].login == self.login :
+                return uid
+
         
     def saveCredentials(self):
         util.settings.beginGroup("user")
@@ -833,7 +841,7 @@ class ClientWindow(FormClass, BaseClass):
       
 
     def handle_stats(self, message):
-        self.statsInfo.emit(message)       
+        self.statsInfo.emit(message)
 
     def handle_welcome(self, message):
         
@@ -890,9 +898,10 @@ class ClientWindow(FormClass, BaseClass):
     
             elif message["style"] == "warning":
                 QtGui.QMessageBox.warning(self, "Warning from Server", message["text"])
-            elif message["style"] == "scores":
-                self.tray.showMessage("Scores", message["text"], QtGui.QSystemTrayIcon.Information, 3500)
-                self.localBroadcast.emit("Scores", message["text"])
-                self.localBroadcast.emit("Scores", 'Report incorrect scores here: <a style="color:cornflowerblue" href="http://www.faforever.com/forums/viewtopic.php?f=3&t=664">Score Report Thread</a>')                
+           
             else:
                 QtGui.QMessageBox.information(self, "Notice from Server", message["text"])
+
+        if message["style"] == "restart":
+            logger.info("Server is asking for client restart.")
+            QtGui.QApplication.quit()
