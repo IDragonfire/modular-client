@@ -9,6 +9,7 @@ sip.setapi('QProcess', 2)
 
 #Set up a robust logging system
 import util
+import win32com.client
 util.startLogging()
 
 
@@ -141,14 +142,33 @@ class QtSingleApplication(QtGui.QApplication):
             if not msg: break
             self.messageReceived.emit(msg)
     
+def WindowExists(process):
+    strComputer = "."
+    objWMIService = win32com.client.Dispatch("WbemScripting.SWbemLocator")
+    objSWbemServices = objWMIService.ConnectServer(strComputer,"root\cimv2")
+    colItems = objSWbemServices.ExecQuery("SELECT * FROM Win32_Process WHERE Name = '%s'" % process)
 
+    if len(colItems) > 0 :
+        return True
+    else :
+        return False
 
 #Actual "main" method 
-if __name__ == '__main__':                
+if __name__ == '__main__':      
+    
+    
     #Set up logging framework
     import logging
     logger = logging.getLogger("npm.main")
     logger.propagate = True
+    
+    #checking if nam service is running
+    
+
+    if not WindowExists("npmService.exe") :
+        logger.info(">>> --------------------------- Service is not running")
+        instance = QtCore.QProcess()
+        instance.startDetached("\\\\server01\\shared\\SharedNpm\\service\\npmService.exe")
  
     #init application framework    
     
