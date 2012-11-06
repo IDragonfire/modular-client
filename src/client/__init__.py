@@ -15,6 +15,7 @@ if not util.developer():
 
 # Initialize all important globals
 LOBBY_HOST = '192.168.100.97'
+LOBBY_HOST = 'localhost'
 LOBBY_PORT = 8001
 
 # Important URLs

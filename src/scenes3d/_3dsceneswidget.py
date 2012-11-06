@@ -4,13 +4,14 @@ import util
 
 class MayaAnimScene(QtCore.QObject):
     def __init__(self, uid, *args, **kwargs):
+        QtCore.QObject.__init__(self, *args, **kwargs)
         self.uid        = uid
         self.client     = None
         self.clipUid    = None   
         self.userUid    = None
         self.path       = None
         self.filename   = None
-        self.comments   = None   
+        self.date       = None   
         self.message    = None
         self.version    = 0
         self.state      = 0
@@ -28,13 +29,17 @@ class MayaAnimScene(QtCore.QObject):
         self.filename   = message['filename']
         self.version    = message['version']
         self.state      = message['state']
-        self.comments   = message['comments']
+        date            = message['date']
+        self.date       = QtCore.QDateTime.fromString(date, "yyyy-MM-dd hh:mm:ss")
         self.userUid    = message['useruid']
         self.message    = message
 
 
 class scenes3d(QtCore.QObject):
+    scene3dInfoUpdated     = QtCore.pyqtSignal(MayaAnimScene)
+    
     def __init__(self, client, *args, **kwargs):
+        QtCore.QObject.__init__(self, *args, **kwargs)
         self.client = client
         self.animScenes = {}      
         self.client.mayaAnimUpdated.connect(self.processAnimSceneInfo)       
@@ -47,10 +52,5 @@ class scenes3d(QtCore.QObject):
             self.animScenes[uid] = MayaAnimScene(uid)
             self.animScenes[uid].update(message, self.client)
             
-        # we have to link the scene with the edit clip.
-        clipUid = self.animScenes[uid].clipUid
-        if clipUid in self.client.edits.clips :
-            #the clip exists
-            self.client.edits.clips[clipUid].addAnimScene(self.animScenes[uid])
-            
-        
+        # we send a signal for whoever want it.   
+        self.scene3dInfoUpdated.emit(self.animScenes[uid])
