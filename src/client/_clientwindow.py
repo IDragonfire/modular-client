@@ -37,26 +37,20 @@ class ClientWindow(FormClass, BaseClass):
     
     #This signal is emitted when the client is done rezising
     doneresize   = QtCore.pyqtSignal()
-    
-    #These signals notify connected modules of game state changes (i.e. reasons why FA is launched)
-    viewingReplay = QtCore.pyqtSignal(QtCore.QUrl)
-    
-    #Game state controls
-#    gameEnter   = QtCore.pyqtSignal()
-#    gameExit    = QtCore.pyqtSignal()
-     
+        
     #These signals propagate important client state changes to other modules
-    userUpdated     = QtCore.pyqtSignal(dict)
-    projectsUpdated = QtCore.pyqtSignal(dict)
-    editsUpdated    = QtCore.pyqtSignal(dict)
-    clipUpdated     = QtCore.pyqtSignal(dict)
-    mayaAnimUpdated = QtCore.pyqtSignal(dict)
-    commentUpdated  = QtCore.pyqtSignal(dict)
-    powerUpdated    = QtCore.pyqtSignal()
-    makeIconUpdated = QtCore.pyqtSignal(str, QtGui.QImage, list)
+    userUpdated             = QtCore.pyqtSignal(dict)
+    projectsUpdated         = QtCore.pyqtSignal(dict)
+    editsUpdated            = QtCore.pyqtSignal(dict)
+    clipUpdated             = QtCore.pyqtSignal(dict)
+    mayaAnimUpdated         = QtCore.pyqtSignal(dict)
+    pipelineStepUpdated     = QtCore.pyqtSignal(dict)
+    commentUpdated          = QtCore.pyqtSignal(dict)
+    stepUpdated             = QtCore.pyqtSignal(dict)
+    
+    powerUpdated            = QtCore.pyqtSignal()
+    makeIconUpdated         = QtCore.pyqtSignal(str, QtGui.QImage, list)
 
-    
-    
     def __init__(self, *args, **kwargs):
         BaseClass.__init__(self, *args, **kwargs)        
         
@@ -175,7 +169,10 @@ class ClientWindow(FormClass, BaseClass):
 
                 
     def setup(self):
-
+        ''' Here, we are importing all the differents modules that the client can use.
+        A module can have his own interface (like clips, storyboard...), 
+        or be a container for datas coming from the servers (like comments, scenes3d, ...)
+        '''
         import projects
         import edits
         import scenes3d
@@ -183,8 +180,10 @@ class ClientWindow(FormClass, BaseClass):
         import users
         import comments
         import clips
+        import pipeline
         
         self.clips      = clips.Clips(self)
+        self.pipeline   = pipeline.Pipeline(self)
         self.comments   = comments.Comments(self)
         self.scenes3d   = scenes3d.Scenes3d(self)
         self.projects   = projects.Projects(self)
@@ -193,8 +192,6 @@ class ClientWindow(FormClass, BaseClass):
         self.users      = users.Users(self)
         
         
-
-
 
     @QtCore.pyqtSlot()
     def cleanup(self):
@@ -839,10 +836,6 @@ class ClientWindow(FormClass, BaseClass):
         except:
             raise #Pass it on to our caller, Malformed Command
       
-
-    def handle_stats(self, message):
-        self.statsInfo.emit(message)
-
     def handle_welcome(self, message):
         
         if "session" in message :
@@ -886,6 +879,12 @@ class ClientWindow(FormClass, BaseClass):
     
     def handle_maya_anim_info(self, message):
         self.mayaAnimUpdated.emit(message)
+
+    def handle_pipeline_step_info(self, message):
+        self.pipelineStepUpdated.emit(message)
+
+    def handle_step_info(self, message):
+        self.stepUpdated.emit(message)
      
     def handle_notice(self, message):
         if "text" in message:

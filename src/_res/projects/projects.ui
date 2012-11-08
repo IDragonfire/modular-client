@@ -19,11 +19,11 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QHBoxLayout" name="horizontalLayout">
+  <layout class="QGridLayout" name="gridLayout">
    <property name="margin">
     <number>0</number>
    </property>
-   <item>
+   <item row="0" column="0" rowspan="2">
     <widget class="QFrame" name="frame">
      <property name="sizePolicy">
       <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
@@ -112,7 +112,7 @@
      </layout>
     </widget>
    </item>
-   <item>
+   <item row="0" column="1" colspan="2">
     <widget class="QFrame" name="listFrame">
      <property name="frameShape">
       <enum>QFrame::NoFrame</enum>
@@ -128,9 +128,12 @@
        <number>0</number>
       </property>
       <item>
-       <widget class="QListWidget" name="shotList">
+       <widget class="QListWidget" name="stepsList">
         <property name="focusPolicy">
          <enum>Qt::NoFocus</enum>
+        </property>
+        <property name="dragDropMode">
+         <enum>QAbstractItemView::InternalMove</enum>
         </property>
         <property name="selectionMode">
          <enum>QAbstractItemView::NoSelection</enum>
@@ -172,6 +175,26 @@
       </item>
      </layout>
     </widget>
+   </item>
+   <item row="1" column="1">
+    <widget class="QPushButton" name="addStepButton">
+     <property name="text">
+      <string>Add A Pipeline Step</string>
+     </property>
+    </widget>
+   </item>
+   <item row="1" column="2">
+    <spacer name="horizontalSpacer">
+     <property name="orientation">
+      <enum>Qt::Horizontal</enum>
+     </property>
+     <property name="sizeHint" stdset="0">
+      <size>
+       <width>367</width>
+       <height>20</height>
+      </size>
+     </property>
+    </spacer>
    </item>
   </layout>
  </widget>
