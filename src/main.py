@@ -174,6 +174,8 @@ if __name__ == '__main__':
     
     appGuid = 'e0526851-f811-4596-9423-4aca9a830c27'
     
+    if util.developer() :
+        appGuid = "dev"
         
     app = QtSingleApplication(appGuid, sys.argv)
     if app.isRunning() :

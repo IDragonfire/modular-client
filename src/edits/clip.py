@@ -213,7 +213,7 @@ class Clip(QtGui.QListWidgetItem):
     
     def update(self):
         '''     
-        Updates this item from the message dictionary supplied
+        Updates this item
         '''
 
         #remove all comments
