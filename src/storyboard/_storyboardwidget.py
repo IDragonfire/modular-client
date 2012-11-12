@@ -31,6 +31,7 @@ class StoryboardWidget(FormClass, BaseClass):
         
         self.client.clips.clipUpdated.connect(self.processClipInfo)
         self.client.clips.clipClicked.connect(self.clipSelection)
+        self.client.clips.filterScene.textChanged.connect(self.eventFilterChanged)
          
         self.client.comments.commentInfoUpdated.connect(self.processCommentInfo)
         #self.client.clipUpdated.connect(self.processClipInfo)
@@ -60,6 +61,21 @@ class StoryboardWidget(FormClass, BaseClass):
     def storyDoubleClicked(self, item):
         pass
 
+    def eventFilterChanged(self):
+        if self.client.clips.filterScene.text() == "" :
+            for uid in self.story :
+                self.story[uid].setHidden(0)    
+        else :        
+            filterText = filter(lambda x: x.isdigit(), self.client.clips.filterScene.text())
+            
+            if filterText == "" :
+                return
+            
+            for uid in self.story :                
+                if self.story[uid].clip.scene == int(filterText) :
+                    self.story[uid].setHidden(0)
+                else :
+                    self.story[uid].setHidden(1)
 
     def clipSelection(self, item):
         ''' we have selected a clip'''

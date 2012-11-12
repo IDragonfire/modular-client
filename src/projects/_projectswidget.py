@@ -27,9 +27,13 @@ class ProjectWidget(FormClass, BaseClass):
         self.projectList.setItemDelegate(ProjectItemDelegate(self))
         self.projectList.itemDoubleClicked.connect(self.projectDoubleClicked)
         
+        self.stepsList.itemPressed.connect(self.stepPressed)
+
+        
         self.client.projectsUpdated.connect(self.processProjectsInfo)
         self.client.powerUpdated.connect(self.powerUpdate)
         self.client.pipeline.stepUpdated.connect(self.stepUpdate)
+        self.client.pipeline.taskUpdated.connect(self.taskUpdate)
 
     def powerUpdate(self):
         if self.client.power >= 16 :
@@ -38,6 +42,16 @@ class ProjectWidget(FormClass, BaseClass):
         else :
             self.newProjectButton.setVisible(0)
             self.addStepButton.setVisible(0)        
+
+    def stepPressed(self, item):
+        if QtGui.QApplication.mouseButtons() == QtCore.Qt.RightButton:
+            item.stepPressed()
+
+    def taskUpdate(self, task):
+        #TODO : we should be able to update a task that has no step yet, even it shouldn't happen.
+        uid = task.pipelineId
+        if uid in self.steps :
+            self.steps[uid].addingTask(task)
 
     def stepUpdate(self, step):
         uid = step.uid

@@ -1,0 +1,12 @@
+<tr>
+<td align = "center" bgcolor="{color2}">
+<font color="black">V e r s i o n</font><br/>
+<font color="black" size="+4"><b>{version}</b></font>
+</td>
+<td align = "left" bgcolor="{color}">
+<font color="black">{info}</font><br/>
+<font color="black">{date}</font><br/>
+</td>
+
+</tr>
+</table>

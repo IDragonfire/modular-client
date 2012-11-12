@@ -1,0 +1,11 @@
+<table border="0" cellpadding="2" cellspacing="2" width= "210">
+<tr>
+<td align = "left" width="75">
+<font color="silver">S c e n e /</font>
+<font color="yellow" size="+0"><b>{scene}</b></font>
+</td>
+<td align = "left">
+<font color="silver">S h o t /</font>
+<font color="orange" size="+0"><b>{shot}</b></font>
+</td>
+</tr>

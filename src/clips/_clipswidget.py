@@ -50,14 +50,21 @@ class ClipsWidget(FormClass, BaseClass):
         self.clipClicked.emit(item)
 
     def eventFilterChanged(self):
-        filterText = self.filterScene.text().strip(string.ascii_letters)
-        if filterText != "" :
+        if self.filterScene.text() == "" :
+            for uid in self.clips :
+                self.clips[uid].setHidden(0)      
+        else :        
+            filterText = filter(lambda x: x.isdigit(), self.filterScene.text())
+            
+            if filterText == "" :
+                return
+            
+
             for uid in self.clips :
                 
                 if self.clips[uid].scene == int(filterText) :
                     self.clips[uid].setHidden(0)
                 else :
                     self.clips[uid].setHidden(1)
-        else :
-            for uid in self.clips :
-                self.clips[uid].setHidden(0)                
+
+          

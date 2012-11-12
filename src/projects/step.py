@@ -17,17 +17,55 @@ class Step(QtGui.QListWidgetItem):
         
         self.step = step
         self.client = self.step.client
+        self.tasks = {}
 
     def update(self):
         '''     
         Updates this item
         '''
+        self.updateText()
+   
+    def stepPressed(self):
+        '''
+        A step was clicked
+        '''
+        menu = QtGui.QMenu(self.client)
+        actionTask = QtGui.QAction("Add task", menu)
+    
+        if self.client.power <= 16 :
+            actionTask.setDisabled(True)
         
-        uid = self.step.uid
-        name = self.client.pipeline.pipeline_steps[uid].name
+        # Triggers
+        actionTask.triggered.connect(self.addTask)
+    
+        menu.addAction(actionTask)
+        menu.popup(QtGui.QCursor.pos())
+        
+    def addingTask(self, task):
+        if not task.uid in self.tasks :
+            self.tasks[task.uid] = task
+        self.updateText()
 
-        self.setText(str(self.step.index) + " " + name)
-        #self.setText(self.FORMATTER_CLIP.format(index = step.index, name = name))
+    def updateText(self):
+        uid = self.step.uid
+        name = self.client.pipeline.getName(uid)      
+        text = str(self.step.index) + ". " + name
+        
+        if len (self.tasks) > 0 :
+            text += "\nTasks :\n"
+            for uid in self.tasks :
+                text += self.tasks[uid].name + "\n" 
+        self.setText(text)
+         
+    def addTask(self):
+        '''
+        Adding a task to a step.
+        '''
+        text, ok = QtGui.QInputDialog.getText(self.client, "Adding a new task",
+                "Task:", QtGui.QLineEdit.Normal,
+                "")
+        if ok and text != '':
+            self.client.send(dict(command="pipeline", action="add_task", uid = self.step.uid, name = text))
     
     def __ge__(self, other):
         ''' 

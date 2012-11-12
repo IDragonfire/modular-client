@@ -19,6 +19,8 @@ import sys
 import time
 import os
 
+from validations.validator import Validator
+
 class ClientOutdated(StandardError):
     pass
 
@@ -47,6 +49,9 @@ class ClientWindow(FormClass, BaseClass):
     pipelineStepUpdated     = QtCore.pyqtSignal(dict)
     commentUpdated          = QtCore.pyqtSignal(dict)
     stepUpdated             = QtCore.pyqtSignal(dict)
+    taskUpdated             = QtCore.pyqtSignal(dict)
+    
+    validatorUpdated        = QtCore.pyqtSignal(Validator)
     
     powerUpdated            = QtCore.pyqtSignal()
     makeIconUpdated         = QtCore.pyqtSignal(str, QtGui.QImage, list)
@@ -107,9 +112,9 @@ class ClientWindow(FormClass, BaseClass):
         self.session = None
 
         #Timer for resize events
-        self.resizeTimer = QtCore.QTimer(self)
-        self.resizeTimer.timeout.connect(self.resized)
-        self.preferedSize = 0
+#        self.resizeTimer = QtCore.QTimer(self)
+#        self.resizeTimer.timeout.connect(self.resized)
+#        self.preferedSize = 0
                       
         #Local Relay Server
         self.relayServer = relay.relayserver.RelayServer(self)
@@ -181,15 +186,17 @@ class ClientWindow(FormClass, BaseClass):
         import comments
         import clips
         import pipeline
+        import validations
         
-        self.clips      = clips.Clips(self)
-        self.pipeline   = pipeline.Pipeline(self)
-        self.comments   = comments.Comments(self)
-        self.scenes3d   = scenes3d.Scenes3d(self)
-        self.projects   = projects.Projects(self)
-        self.edits      = edits.Edits(self)
-        self.storyboard = storyboard.Storyboard(self)
-        self.users      = users.Users(self)
+        self.clips          = clips.Clips(self)
+        self.pipeline       = pipeline.Pipeline(self)
+        self.comments       = comments.Comments(self)
+        self.scenes3d       = scenes3d.Scenes3d(self)
+        self.projects       = projects.Projects(self)
+        self.edits          = edits.Edits(self)
+        self.storyboard     = storyboard.Storyboard(self)
+        self.users          = users.Users(self)
+        self.validations    = validations.Validations(self)
         
         
 
@@ -252,12 +259,12 @@ class ClientWindow(FormClass, BaseClass):
         return QtGui.QMainWindow.closeEvent(self, event)
         
 
-    def resizeEvent(self, size):
-        self.resizeTimer.start(400)
-        
-    def resized(self):
-        self.resizeTimer.stop()
-        self.doneresize.emit()
+#    def resizeEvent(self, size):
+#        self.resizeTimer.start(400)
+#        
+#    def resized(self):
+#        self.resizeTimer.stop()
+#        self.doneresize.emit()
      
     def initMenus(self):
                 
@@ -830,7 +837,7 @@ class ClientWindow(FormClass, BaseClass):
                     getattr(self, cmd)(message)
                 else:                
                     logger.error("Unknown command for JSON." + message['command'])
-                    raise "StandardError"
+                    raise StandardError 
             else:
                 logger.debug("No command in message.")                
         except:
@@ -885,6 +892,9 @@ class ClientWindow(FormClass, BaseClass):
 
     def handle_step_info(self, message):
         self.stepUpdated.emit(message)
+
+    def handle_task_info(self, message):
+        self.taskUpdated.emit(message)
      
     def handle_notice(self, message):
         if "text" in message:
