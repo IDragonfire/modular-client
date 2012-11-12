@@ -15,9 +15,14 @@
 
 
 
+
 test = {}
 
-#test[2] = "gggez"
-#test[1] = "gggezdd"
+test[2] = "prout2"
+test[1] = "prout1"
+test[0] = "prout0"
 
-print max(test)
+print test
+
+for i in test :
+    print test[i]
