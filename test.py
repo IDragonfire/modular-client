@@ -1,28 +1,19 @@
 
 
+import subprocess
 
-#from PyQt4 import QtCore
-#
-#
-#ba = QtCore.QByteArray() 
-#ba.append("77787")
-#ba.append("77787zz")
+app = "\\\\VSERVER01\\RoyalRender6\\bin\\win\\ffmpeg.exe -r 24 -i s:\\projects\\McT\\images\\playblast\\003_012_004\\003_012_004.%04d.tga -y -an -qscale 1 -vcodec prores c:\\workspace\\playblast\\test.mov"
+args = [app, "-r 24 -i s:\projects\McT\images\playblast\003_012_004\003_012_004.%04d.tga -y -an -qscale 1 -vcodec prores c:\workspace\playblast\test.mov"]
 
-#ba.resize(3)
-#ba.setNum (0, 545)
-#ba.setNum (1, 5)
-#ba.setNum (2, 65)
+
+
+path = "\\\\VSERVER01\\RoyalRender6\\bin\\win"
 
 
 
 
-test = {}
+#process = subprocess.Popen(app)
 
-test[2] = "prout2"
-test[1] = "prout1"
-test[0] = "prout0"
-
-print test
-
-for i in test :
-    print test[i]
+from PyQt4 import QtCore
+instance = QtCore.QProcess()
+instance.startDetached(app)        
