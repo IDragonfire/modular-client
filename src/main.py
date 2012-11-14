@@ -164,11 +164,11 @@ if __name__ == '__main__':
     
     #checking if nam service is running
     
-
-    if not WindowExists("npmService.exe") :
-        logger.info(">>> --------------------------- Service is not running")
-        instance = QtCore.QProcess()
-        instance.startDetached("\\\\server01\\shared\\SharedNpm\\service\\npmService.exe")
+    if not util.developer() :
+        if not WindowExists("npmService.exe") :
+            logger.info(">>> --------------------------- Service is not running")
+            instance = QtCore.QProcess()
+            instance.startDetached("\\\\server01\\shared\\SharedNpm\\service\\npmService.exe")
  
     #init application framework    
     

@@ -34,12 +34,13 @@ logger= logging.getLogger("npm.client")
 logger.setLevel(logging.DEBUG)
 
 class npmClient(object) :
-    def __init__(self, app = None) :
+    def __init__(self, app = None, parent = None) :
         self.socket = QtNetwork.QLocalSocket()  
 
         self.blockSize = 0   
         
-        self.app = app
+        self.app    = app
+        self.parent = parent
         self.requests = {}
         
         self.breakWait = False
@@ -51,7 +52,14 @@ class npmClient(object) :
             self.displayMessage("error", "Cannot connect to the server.")
             self.stop()
 
+    def isConnected(self):
+        return self.socket.isValid()
+
     def stop(self) :
+        if self.parent :
+            if hasattr(self.parent, "cleaning"):
+                self.parent.cleaning()
+
         self.requests = {}
         if self.socket.state() == QtNetwork.QLocalSocket.ConnectedState:
             self.socket.disconnectFromServer()
@@ -79,20 +87,24 @@ class npmClient(object) :
         '''
         A fairly pythonic way to process received strings as JSON messages.
         '''
-        action = json.loads(action)
-        if "command" in action :
-            if action["command"] == "notice" :
-                self.displayMessage(action["style"], action["text"])
-                self.breakWait = True
-                return        
-        requestid = action.get("requestid", None)
-        
-        if requestid :
-            if requestid in self.requests :               
-                function = self.requests[requestid]["function"]
-                args     = self.requests[requestid]["args"]
-                function(action, *args)
-        
+        try :
+            action = json.loads(action)
+            if "command" in action :
+                if action["command"] == "notice" :
+                    self.displayMessage(action["style"], action["text"])
+                    self.breakWait = True
+                    return        
+            requestid = action.get("requestid", None)
+            
+            if requestid :
+                if requestid in self.requests :               
+                    function = self.requests[requestid]["function"]
+                    args     = self.requests[requestid]["args"]
+                    function(action, *args)
+        except :
+            logger.error("cannot decode command")
+            logger.error(action)
+            
     def writeToServer(self, action, requestid, function, *args, **kw):
         '''
         This method is the workhorse of the client, and is used to send messages, queries and commands to the server.
@@ -119,6 +131,20 @@ class npmClient(object) :
         logger.info("Outgoing JSON Message: " + data)
         self.writeToServer(data, requestid, function, *args)
         return requestid
+
+    def launchExe(self, app, *args):
+        instance = QtCore.QProcess()
+        instance.startDetached(app)        
+
+    def askChoice(self, question, choices):
+        if self.app :
+            item, ok = QtGui.QInputDialog.getItem(self.app, "Selection from the server",
+                    question, choices, 0, False)
+            if ok and item:
+                return item
+            else:
+                return None
+        return None
 
     def askQuestion(self, question):
         if self.app :
@@ -160,4 +186,18 @@ class npmClient(object) :
         return self.answered
 
     def disconnectedFromServer(self) :
-        pass
+        self.socket.disconnected.disconnect()
+        now = time.time()
+        while time.time() - now < 6 :
+            QtCore.QCoreApplication.processEvents()
+            self.socket.connectToServer("npmClient")
+            if self.socket.waitForConnected(6000) :
+                self.socket.disconnected.connect(self.disconnectedFromServer)
+                break
+            
+        if not self.isConnected() :
+            self.displayMessage("error", "Connection to the server lost and cannot (re-)connect.")
+            self.stop()
+
+            
+            

@@ -147,8 +147,7 @@ class Relayer(QtCore.QObject):
 
 class RelayServer(QtNetwork.QLocalServer):
     ''' 
-    This is a local listening server that FA can send its replay data to.
-    It will instantiate a fresh ReplayRecorder for each FA instance that launches.
+    This is a local listening server that NPM can send its data to.    
     '''
     __logger = logging.getLogger("npm.relay.relayserver")
     __logger.setLevel(logging.DEBUG)

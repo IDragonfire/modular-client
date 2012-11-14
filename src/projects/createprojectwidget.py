@@ -48,19 +48,12 @@ class CreateProjectWidget(FormClass, BaseClass):
         self.done(1)
     
     def project3dChanged(self, idx):
-        
         if self.projectName.text() == ""  or self.manualText == False :
-        
             project = self.project3dBox.itemText(idx)
             self.projectName.setText(project)
             self.manualText = False
-        
-        
-        
 
-
-    def projectCompChanged(self, idx):
-        
+    def projectCompChanged(self, idx):       
         if self.projectName.text() == ""  or self.manualText == False :
         
             projectP = self.projectCompBox.itemText(idx)
