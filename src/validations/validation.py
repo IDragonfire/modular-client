@@ -1,5 +1,17 @@
 from PyQt4 import QtGui, QtCore
+from random import choice
 import util
+
+from retakewidget import RetakeWidget
+
+REASONS = ["C'est d\'la merde !", 
+           "Faut arreter de deconner maintenant !", 
+           "J\'ai vomi dans ma bouche.", 
+           "Ton C4 est pret sur mon bureau.", 
+           "J\'ai honte pour toi.",
+           "J\'en ai vu des trucs moches, mais des comme ca, rarement !.",
+           "AAAAAAAH MES YEUX FONDENT !!"
+           ]
 
 class ValidationClipItemDelegate(QtGui.QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
@@ -40,16 +52,18 @@ class ValidationClip(QtGui.QListWidgetItem):
     
     def __init__(self, clip, parent, *args, **kwargs):
         QtGui.QListWidgetItem.__init__(self, *args, **kwargs)    
-        self.clip       = clip
-        self.parent     = parent
-        self.client     = self.clip.client
-        self.validators = {}
-        self.tasks      = {}
-        self.filtered   = False
-        self.height     = 50
-        self.viewtext   = None
+        self.clip           = clip
+        self.parent         = parent
+        self.client         = self.clip.client
+        self.validators     = {}
+        self.tasks          = {}
+        self.filtered       = False
+        self.height         = 50
+        self.viewtext       = None
+        self.tooltipText    = None
        
         self.approvalWait   = False
+        self.approved       = False
        
     def gradeColor(self, color, state):
         '''
@@ -58,17 +72,20 @@ class ValidationClip(QtGui.QListWidgetItem):
         qtcolor = QtGui.QColor()
         qtcolor.setNamedColor(color)
         sat = 0
+        value = qtcolor.valueF()
         if state    == -1 :
-            sat = 0.2
+            sat = 0.0
         elif state  == 0 :
-            sat = 0.4
+            sat = 0.2
         elif state  == 1 :
             sat = 0.6
-        elif state  == 2 :
-            sat = 0.8
         elif state  == 3 :
+            value = .7
+            sat = 0.5
+        elif state  == 2 :
+
             sat = 1.0
-        qtcolor.setHsvF(qtcolor.hueF(), sat, qtcolor.valueF())
+        qtcolor.setHsvF(qtcolor.hueF(), sat, value)
         return qtcolor.name()
 
     def versionColor(self, color):
@@ -77,6 +94,64 @@ class ValidationClip(QtGui.QListWidgetItem):
         qtcolor.setHsvF(qtcolor.hueF(), qtcolor.saturationF(), qtcolor.valueF()-.4)
         return qtcolor.name()              
         
+    def addClip(self, color, clip):
+        if clip :
+            
+            state = clip.state
+            add = False
+            if state == 0 and self.parent.WipCheckBox.checkState() :
+                self.setHidden(False)
+                add = True
+            elif state == 1 and self.parent.ApprovalCheckBox.checkState() :
+                self.setHidden(False)
+                self.approvalWait = True
+                add = True
+            elif state == 2 and self.parent.ApprovedCheckBox.checkState() :
+                self.approved = True
+                self.setHidden(False)
+                add = True
+            elif state == 3 and self.parent.RetakeCheckBox.checkState() :
+                self.setHidden(False)
+                self.retake = True
+                add = True
+                
+            user = self.client.getUserName(clip.userUid)            
+            colorSat = self.gradeColor(color, state)
+            if add :
+                self.height = self.height + 60
+                self.viewtext  += self.FORMATTER_CLIP.format(color2 = color, color = colorSat, info = clip.filename, version = clip.version, user = user, date = clip.date.toString("dd-MM hh:mm")) 
+
+    def getClipToDisplay(self, uid, state):
+        returnValidator = None
+        for validuid in self.validators :
+            if self.validators[validuid].taskUid == uid :
+                validator = self.validators[validuid]
+                if state :
+                    stateCheck = state
+                else :
+                    stateCheck = validator.state
+                
+                if validator.state == stateCheck :
+                    if returnValidator :
+                        if validator.version > returnValidator.version :
+                            returnValidator = validator
+                    else :
+                        returnValidator = validator                
+        return returnValidator
+        
+    
+    def getComments(self):
+        self.tooltipText = ''
+        for uid in self.client.comments.comments :
+            comment = self.client.comments.comments[uid]
+            
+            if comment.clipuid == self.clip.uid and comment.typeuid == self.client.pipeline.getModuleUid(self.parent.step.uidStep) :
+                user = self.clip.client.getUserName(comment.useruid)
+                
+                self.tooltipText += user + " (" + comment.date.toString("dd-MM hh:mm") +") : \n" + comment.comment +"\n" 
+                
+        self.setToolTip(self.tooltipText)
+    
     def update(self):
         '''     
         Updates this item from the message dictionary supplied
@@ -84,96 +159,149 @@ class ValidationClip(QtGui.QListWidgetItem):
         self.height     = 30
 
         self.setHidden(True)
-        self.approvalWait = False
-        
+        self.approvalWait   = False
+        self.approved       = False
+        self.retake         = False
+         
         if self.filtered :
             return
         
         self.viewtext = self.FORMATTER_CLIPHEADER.format(scene = self.clip.scene, shot = self.clip.shot)
-
         for uid in self.tasks :
-            self.height = self.height + 60
             task = self.tasks[uid]
 
-            version   = 0
-            displayvalidator = None
-            for validuid in self.validators :
-                # we need the highest version for now
-                if self.validators[validuid].taskUid == uid :
-                    validator = self.validators[validuid]
-                    if validator.version > version :
-                        displayvalidator = validator                     
-      
+            ValidLastVersion    = self.getClipToDisplay(uid, None)
+            ValidForValidation  = self.getClipToDisplay(uid, 1)
+            ValidValidated      = self.getClipToDisplay(uid, 2)
+            ValidRetake         = self.getClipToDisplay(uid, 3)
+
+            # in some cases, we don't need to display some clips :
+            if ValidLastVersion == ValidForValidation :
+                ValidForValidation  = None
+            
+            if ValidLastVersion == ValidValidated :
+                ValidValidated      = None
+                self.approved       = False
+            
+            if ValidLastVersion == ValidRetake :
+                ValidRetake         = None
+                self.retake         = False
+            # not displaying the last retake if we have a scene newer for validation or already approved
+            
+            if ValidRetake and ValidForValidation :
+                if ValidRetake.version <  ValidForValidation.version :
+                    ValidRetake         = None
+                    self.retake         = False
+            
+            if ValidRetake and ValidValidated :
+                if ValidRetake.version <  ValidValidated.version :
+                    ValidRetake         = None
+                    self.retake         = False
+                
+            
             # color grading
             color = task.color
-            if displayvalidator :
-                state = displayvalidator.state
-                
-                if state == 0 and self.parent.WipCheckBox.checkState() :
-                    self.setHidden(False)
-                elif state == 1 and self.parent.ApprovalCheckBox.checkState() :
-                    self.setHidden(False)
-                    self.approvalWait = True
-                elif state == 2 and self.parent.ApprovedCheckBox.checkState() :
-                    self.setHidden(False)
-                elif state == 3 and self.parent.RetakeCheckBox.checkState() :
-                    self.setHidden(False)
-                
-                colorSat = self.gradeColor(color, state)
-                self.viewtext  += self.FORMATTER_CLIP.format(color2 = color, color = colorSat, info = displayvalidator.filename, version = displayvalidator.version, date = displayvalidator.date.toString("dd-MM hh:mm")) 
-            else :
 
-                self.viewtext  += self.FORMATTER_CLIP.format(color2 = color, color = self.gradeColor(color, -1), info = "", version = "", date = "")
+            self.addClip(color, ValidValidated      )
+            self.addClip(color, ValidForValidation  )
+            self.addClip(color, ValidRetake         )
+            self.addClip(color, ValidLastVersion    )
+            
+            if not ValidLastVersion and not ValidForValidation and not ValidRetake and not ValidValidated :
+                self.height = self.height + 60
+                self.viewtext  += self.FORMATTER_CLIP.format(color2 = color, color = self.gradeColor(color, -1), info = "", version = "", date = "", user = "")
                 if self.parent.NothingCheckBox.checkState() :
                     self.setHidden(False)
+
+            if self.retake :
+                self.getComments()
+                
 
     def stepPressed(self):
         canDisplay = False
         menu = QtGui.QMenu(self.client)
-        
+
         if self.approvalWait :
             canDisplay      = True
             actionValidate  = QtGui.QAction("Validate", menu)
+            actionRetake    = QtGui.QAction("Send to re-take", menu)
     
             if self.client.power <= 16 :
                 actionValidate.setDisabled(True)
-        
-        # Triggers
+                actionRetake.setDisabled(True)        
+                
+            # Triggers
+            actionRetake.triggered.connect(self.retake)
             actionValidate.triggered.connect(self.validate)
-    
             menu.addAction(actionValidate)
+            menu.addAction(actionRetake)
+        
+        elif self.approved :
+            canDisplay      = True
+            actionRetake    = QtGui.QAction("Send to re-take", menu)
+            
+            if self.client.power <= 16 :
+                actionRetake.setDisabled(True)            
+
+            # Triggers    
+            actionRetake.triggered.connect(self.retake)
+            menu.addAction(actionRetake)
         
         if canDisplay :    
             menu.popup(QtGui.QCursor.pos())
 
+    def retake(self):
+        tasksToRetake = {}
+        for uid in self.tasks :
+            task = self.tasks[uid]
+
+            ValidLastVersion = self.getClipToDisplay(uid, 2)
+            if ValidLastVersion :
+                tasksToRetake[task.name] = ValidLastVersion   
+            else :
+                ValidLastVersion = self.getClipToDisplay(uid, 1)
+                if ValidLastVersion :
+                    tasksToRetake[task.name] = ValidLastVersion   
+            
+        items = []    
+        for name in tasksToRetake :
+            items.append(name)
+        if len(items) > 0 :
+            retake = RetakeWidget(self, items, choice(REASONS))
+            if retake.exec_() == 1 :
+                reason  = retake.reasonTextEdit.toPlainText()
+                task    = retake.taskListWidget.currentItem().text()
+                
+                if reason != '' :
+                    if task in tasksToRetake :
+                        clip = tasksToRetake[task]
+                        moduleuid = self.client.pipeline.getModuleUid(self.parent.step.uidStep)
+                        self.client.send(dict(command='validation', action = 'retake', uid=clip.uid, moduleuid=moduleuid, reason=reason))
+                    else :
+                        QtGui.QMessageBox.critical(self.client, "Error", "This clip has no task, I don't even know how you were able to click on it.")
+                else :
+                    QtGui.QMessageBox.critical(self.client, "Error", "You must enter a comment so the user knows what was wrong with his work.")
 
     def validate(self):
         tasksToValidate = {}
         for uid in self.tasks :
             task = self.tasks[uid]
 
-            version   = 0
-            displayvalidator = None
-            for validuid in self.validators :
-                # we need the highest version for now
-                if self.validators[validuid].taskUid == uid :
-                    validator = self.validators[validuid]
-                    if validator.version > version :
-                        displayvalidator = validator 
-            
-            if displayvalidator :
-                if displayvalidator.state == 1 :    
-                    tasksToValidate[task.name] = displayvalidator
-            
+            ValidLastVersion = self.getClipToDisplay(uid, 1)
+    
+            if ValidLastVersion :
+                tasksToValidate[task.name] = ValidLastVersion   
         items = []    
         for name in tasksToValidate :
             items.append(name)
-        item, ok = QtGui.QInputDialog.getItem(self.client, "Select the task to validate",
-                "Task to validate:", items, 0, False)
-        if ok and item:
-            print tasksToValidate[item].uid
-            #TODO : send validation to server
-    
+        if len(items) > 0 :
+            item, ok = QtGui.QInputDialog.getItem(self.client, "Select the task to validate",
+                    "Task to validate:", items, 0, False)
+            if ok and item:
+                clip = tasksToValidate[item]
+                moduleuid = self.client.pipeline.getModuleUid(self.parent.step.uidStep)           
+                self.client.send(dict(command='validation', action = 'validate', uid=clip.uid, moduleuid=moduleuid))            
+
     def data(self, role):
         if role == QtCore.Qt.DisplayRole:
             return self.display()  

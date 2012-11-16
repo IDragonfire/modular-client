@@ -62,11 +62,10 @@ class Step(QtCore.QObject):
 class PipelineStep(QtCore.QObject):
     def __init__(self, uid, *args, **kwargs):
         QtCore.QObject.__init__(self, *args, **kwargs)
-        self.uid         = uid
-        self.name        = None
-        self.message     = None
-        self.moduleName  = None
-        self.messageName = None
+        self.uid        = uid
+        self.name       = None
+        self.message    = None
+        self.moduleUid  = None
 
     def infoMessage(self):
         return self.message
@@ -77,8 +76,7 @@ class PipelineStep(QtCore.QObject):
         '''
         self.client     = client
         self.name       = message['name']
-        self.message    = message['module_name']
-        self.moduleName = message['message_name']
+        self.moduleUid  = message["moduleuid"]
         self.message    = message
 
 
@@ -98,6 +96,14 @@ class pipeline(QtCore.QObject):
         self.client.stepUpdated.connect(self.processStepInfo)       
         self.client.taskUpdated.connect(self.processTaskInfo)
      
+
+    def getModuleUid(self, uid):
+        '''
+        Getting the module Uid needed for the task.
+        '''
+        if uid in self.pipeline_steps :
+            return self.pipeline_steps[uid].moduleUid
+        return None
      
     def getName(self, uid):
         '''Cross-referencing all the known pipeline step to get the name of this project step '''

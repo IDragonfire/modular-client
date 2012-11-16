@@ -4,9 +4,8 @@
 <font color="black" size="+4"><b>{version}</b></font>
 </td>
 <td align = "left" bgcolor="{color}">
-<font color="black">{info}</font><br/>
-<font color="black">{date}</font><br/>
+<font color="black" size="-1">{info}</font><br/>
+<font color="black"><b>{user}</b></font><br/>
+<font color="black"><i>{date}</i></font>
 </td>
-
 </tr>
-</table>

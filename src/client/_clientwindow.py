@@ -45,13 +45,13 @@ class ClientWindow(FormClass, BaseClass):
     projectsUpdated         = QtCore.pyqtSignal(dict)
     editsUpdated            = QtCore.pyqtSignal(dict)
     clipUpdated             = QtCore.pyqtSignal(dict)
-    mayaAnimUpdated         = QtCore.pyqtSignal(dict)
+    validatorUpdated        = QtCore.pyqtSignal(dict)
     pipelineStepUpdated     = QtCore.pyqtSignal(dict)
     commentUpdated          = QtCore.pyqtSignal(dict)
     stepUpdated             = QtCore.pyqtSignal(dict)
     taskUpdated             = QtCore.pyqtSignal(dict)
     
-    validatorUpdated        = QtCore.pyqtSignal(Validator)
+    validatorObjUpdated     = QtCore.pyqtSignal(Validator)
     
     powerUpdated            = QtCore.pyqtSignal()
     makeIconUpdated         = QtCore.pyqtSignal(str, QtGui.QImage, list)
@@ -180,7 +180,6 @@ class ClientWindow(FormClass, BaseClass):
         '''
         import projects
         import edits
-        import scenes3d
         import storyboard
         import users
         import comments
@@ -191,7 +190,6 @@ class ClientWindow(FormClass, BaseClass):
         self.clips          = clips.Clips(self)
         self.pipeline       = pipeline.Pipeline(self)
         self.comments       = comments.Comments(self)
-        self.scenes3d       = scenes3d.Scenes3d(self)
         self.projects       = projects.Projects(self)
         self.edits          = edits.Edits(self)
         self.storyboard     = storyboard.Storyboard(self)
@@ -379,14 +377,19 @@ class ClientWindow(FormClass, BaseClass):
     def linkAbout(self):
         dialog = util.loadUi("client/about.ui")
         dialog.exec_()
-        
+
+    def getUserName(self, uid):
+        user = "Unknown"
+        if uid in self.users.users :
+            user = self.users.users[uid].login      
+        return user
         
     def getUserUid(self):
         for uid in self.users.users :
             if self.users.users[uid].login == self.login :
                 return uid
 
-        
+       
     def saveCredentials(self):
         util.settings.beginGroup("user")
         util.settings.setValue("user/remember", self.remember) #always remember to remember
@@ -401,7 +404,6 @@ class ClientWindow(FormClass, BaseClass):
         util.settings.endGroup()
         util.settings.sync()
 
-
     def clearAutologin(self):
         self.autologin = False
         self.actionSetAutoLogin.setChecked(False)
@@ -411,7 +413,6 @@ class ClientWindow(FormClass, BaseClass):
         util.settings.endGroup()
         util.settings.sync()
         
-
     def saveWindow(self):
         util.settings.beginGroup("window")
         util.settings.setValue("geometry", self.saveGeometry())
@@ -429,9 +430,6 @@ class ClientWindow(FormClass, BaseClass):
         
         
     def loadSettings(self):
-        #Load settings
-        #fa.loadPath()
-                
         util.settings.beginGroup("window")
         geometry =  util.settings.value("geometry", None)
         if geometry:
@@ -469,7 +467,6 @@ class ClientWindow(FormClass, BaseClass):
         
           
     def doConnect(self, reconnect=False):  
-          
         if not self.relayServer.doListen():
             return False
 
@@ -489,9 +486,7 @@ class ClientWindow(FormClass, BaseClass):
         # Begin connecting.        
         self.socket.setSocketOption(QtNetwork.QTcpSocket.KeepAliveOption, 1)
         self.socket.connectToHost(LOBBY_HOST, LOBBY_PORT)
-        
-        
-        
+
         while (self.socket.state() != QtNetwork.QAbstractSocket.ConnectedState) and self.progress.isVisible():
             QtGui.QApplication.processEvents()                                        
             if self.socket.state() ==  QtNetwork.QAbstractSocket.UnconnectedState :
@@ -500,7 +495,6 @@ class ClientWindow(FormClass, BaseClass):
 
         self.state = ClientState.NONE    
         self.localIP = str(self.socket.localAddress().toString())
-        
 
 #        #Perform Version Check first        
         if not self.socket.state() == QtNetwork.QAbstractSocket.ConnectedState:
@@ -515,18 +509,13 @@ class ClientWindow(FormClass, BaseClass):
   
             return True       
 
-
-
     def waitSession(self):
         self.send(dict(command="ask_session"))
         while self.session == None :
             QtGui.QApplication.processEvents()  
-       
         return True  
         
-    
     def doLogin(self):
-
         #Determine if a login wizard needs to be displayed and do so
         if not self.autologin or not self.password or not self.login:        
             import loginwizards
@@ -540,9 +529,6 @@ class ClientWindow(FormClass, BaseClass):
       
         logger.info("Attempting to login as: " + str(self.login))
         self.state = ClientState.NONE
-        
-        
-        
 
         self.send(dict(command="hello", version=util.VERSION, login=self.login, password = self.password, local_ip = self.localIP))
         
@@ -556,8 +542,6 @@ class ClientWindow(FormClass, BaseClass):
         
         self.progress.close()
 
-
-        
         if self.state == ClientState.OUTDATED :
                 logger.warn("Client is OUTDATED.")
 
@@ -566,13 +550,12 @@ class ClientWindow(FormClass, BaseClass):
             util.report.BUGREPORT_USER = self.login
             util.crash.CRASHREPORT_USER = self.login
 
-
             #success: save login data (if requested) and carry on
             self.actionSetAutoLogin.setChecked(self.autologin)
             self.updateOptions()
 
             self.progress.close()
-              
+
             #This is a triumph... I'm making a note here: Huge success!
             self.connected.emit()
             self.projects.loggedInSetup()
@@ -600,15 +583,9 @@ class ClientWindow(FormClass, BaseClass):
             self.state = ClientState.CREATED
         else:
             self.state = ClientState.REJECTED
-
-
-
-
     #Color table used by the following method
     # CAVEAT: This will break if the theme is loaded after the client package is imported
     colors = json.loads(util.readfile("client/colors.json"))
-
-       
 
     @QtCore.pyqtSlot(int)
     def mainTabChanged(self, index):
@@ -619,25 +596,6 @@ class ClientWindow(FormClass, BaseClass):
         LATER: This can be rewritten as a simple Signal that each module can then individually connect to.
         '''
         new_tab = self.mainTabs.widget(index)
-#        if new_tab is self.gamesTab:
-#            self.showGames.emit()
-#
-#        if new_tab is self.mapsTab:
-#            self.showMaps.emit()
-#
-#        if new_tab is self.chatTab:
-#            self.showChat.emit()
-#
-#        if new_tab is self.replaysTab:
-#            self.showReplays.emit()
-#
-#        if new_tab is self.ladderTab:
-#            self.showLadder.emit()
-#
-#        if new_tab is self.tourneyTab:
-#            self.showTourneys.emit()
-
-
 
     def loginWriteToFaServer(self, action, *args, **kw):
         '''
@@ -729,8 +687,6 @@ class ClientWindow(FormClass, BaseClass):
         self.bytesToSend = block.size() - 4
     
         self.socket.write(block)
-             
-
 
     @QtCore.pyqtSlot()
     def readFromServer(self):
@@ -749,7 +705,6 @@ class ClientWindow(FormClass, BaseClass):
             self.process(action, ins)
             self.blockSize = 0
                                 
-            
     @QtCore.pyqtSlot()
     def disconnectedFromServer(self):
         logger.warn("Disconnected from lobby server.")
@@ -884,8 +839,8 @@ class ClientWindow(FormClass, BaseClass):
     def handle_comment_info(self, message):
         self.commentUpdated.emit(message) 
     
-    def handle_maya_anim_info(self, message):
-        self.mayaAnimUpdated.emit(message)
+    def handle_validator_info(self, message):
+        self.validatorUpdated.emit(message)
 
     def handle_pipeline_step_info(self, message):
         self.pipelineStepUpdated.emit(message)

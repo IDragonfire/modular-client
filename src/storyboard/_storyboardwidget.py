@@ -21,21 +21,15 @@ class StoryboardWidget(FormClass, BaseClass):
         self.story = {}
 
         self.storyboardList.setItemDelegate(StoryItemDelegate(self))
-        #self.clipList.setItemDelegate(ClipItemDelegate(self))
-        
-
 
         self.storyboardList.itemDoubleClicked.connect(self.storyDoubleClicked)
         self.storyboardList.itemPressed.connect(self.storyPressed)
-        
         
         self.client.clips.clipUpdated.connect(self.processClipInfo)
         self.client.clips.clipClicked.connect(self.clipSelection)
         self.client.clips.filterScene.textChanged.connect(self.eventFilterChanged)
          
         self.client.comments.commentInfoUpdated.connect(self.processCommentInfo)
-        #self.client.clipUpdated.connect(self.processClipInfo)
-        
         
     def processCommentInfo(self, comment):
         if comment.typeuid == 0 :
@@ -81,26 +75,3 @@ class StoryboardWidget(FormClass, BaseClass):
         ''' we have selected a clip'''
         if item.uid in self.story :
             self.storyboardList.setCurrentItem(self.story[item.uid])
-#
-#    def clipDoubleClicked(self, item):
-#        ''' we have double clicked a clip'''
-#        treeItem = item.treeItem
-#        self.shotTree.setCurrentItem(treeItem)
-#        
-#        item.animTreeItem.setExpanded(1)
-#        for uid in item.animScene :
-#            item.animScene[uid].setExpanded(1)
-        
-
-#    def eventFilterChanged(self):
-#        filterText = self.filterScene.text().strip(string.ascii_letters)
-#        if filterText != "" :
-#            for uid in self.clips :
-#                
-#                if self.clips[uid].scene == int(filterText) :
-#                    self.clips[uid].setHidden(0)
-#                else :
-#                    self.clips[uid].setHidden(1)
-#        else :
-#            for uid in self.clips :
-#                self.clips[uid].setHidden(0)

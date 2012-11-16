@@ -42,7 +42,7 @@ class EditsWidget(FormClass, BaseClass):
         
         self.client.clips.clipUpdated.connect(self.processClipInfo)
         self.client.comments.commentInfoUpdated.connect(self.processCommentInfo)
-        self.client.scenes3d.scene3dInfoUpdated.connect(self.processScene3dInfo)
+        self.client.validatorObjUpdated.connect(self.processValidatorInfo)
    
     def zoomChanged(self, value):
         self.zoom = value
@@ -55,21 +55,6 @@ class EditsWidget(FormClass, BaseClass):
             self.validateEditButton.pressed.connect(self.validateEdit)
         else :
             self.parseXmlButton.setVisible(0)    
-#
-#    def clipClicked(self, item):
-#        ''' we have selected a clip'''
-#        self.shotTree.setCurrentItem(item.treeItem)
-#
-#    def clipDoubleClicked(self, item):
-#        ''' we have double clicked a clip'''
-#        treeItem = item.treeItem
-#        self.shotTree.setCurrentItem(treeItem)
-#        
-#        item.animTreeItem.setExpanded(1)
-#        for uid in item.animScene :
-#            item.animScene[uid].setExpanded(1)
-#        
-#
   
     
     def processClipInfo(self, clip):
@@ -94,10 +79,10 @@ class EditsWidget(FormClass, BaseClass):
             if uid in self.clips:
                 self.clips[uid].updateComment(comment)
     
-    def processScene3dInfo(self, scene3d):
-        uid = scene3d.clipUid
+    def processValidatorInfo(self, validator):
+        uid = validator.clipUid
         if uid in self.clips:
-            self.clips[uid].updateScene3d(scene3d)   
+            self.clips[uid].updateScene3d(validator)   
     
     def processEditsInfo(self, message):
         self.topTabs.setVisible(0)
