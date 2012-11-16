@@ -1,8 +1,6 @@
 from PyQt4 import QtGui, QtCore
 import util
 
-test = Step()
-
 class Step(QtGui.QListWidgetItem):
     '''
     A Step in the project.

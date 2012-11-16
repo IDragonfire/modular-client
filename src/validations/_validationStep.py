@@ -34,8 +34,12 @@ class ValidationStepWidget(FormClass, BaseClass):
         
         self.client.clips.clipUpdated.connect(self.clipUpdate)
         self.client.clips.clipClicked.connect(self.clipSelection)
-        
         self.client.clips.filterScene.textChanged.connect(self.eventFilterChanged)
+        
+        
+        self.client.comments.commentInfoUpdated.connect(self.commentUpdate)        
+        
+        
         
         self.NothingCheckBox.stateChanged.connect(self.filterChanged)
         self.WipCheckBox.stateChanged.connect(self.filterChanged)
@@ -76,9 +80,13 @@ class ValidationStepWidget(FormClass, BaseClass):
         if item.uid in self.clips :
             self.validationList.setCurrentItem(self.clips[item.uid])            
     
+    def clipRefresh(self, uid):
+        if uid in self.clips :
+            self.clips[uid].update()
+    
     def clipUpdate(self, clip):
         uid = clip.uid
-        if  uid in self.clips :
+        if uid in self.clips :           
             self.clips[uid].update()
         else :
             self.clips[uid] = ValidationClip(clip, self)
@@ -94,12 +102,13 @@ class ValidationStepWidget(FormClass, BaseClass):
         if taskuid in self.tasks :
             clipuid  = validator.clipUid
             if clipuid in self.clips :
-                self.clips[clipuid].addValidator(validator)          
-        
+                self.clips[clipuid].addValidator(validator)
 
+    def commentUpdate(self, comment):
+        print comment
+        
     def addTask(self, task) :
         uid = task.uid
-        
         if not uid in self.tasks :
             self.tasks[uid] = task
              
@@ -108,16 +117,13 @@ class ValidationStepWidget(FormClass, BaseClass):
             
         self.tasksCheck[uid].setText(self.tasks[uid].name)
         self.tasksCheck[uid].setChecked(True)
-        
-        self.tasksCheck[uid].setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgb(255, 255, 255), stop:1 "+task.color+")")
-        
+        self.tasksCheck[uid].setStyleSheet("background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:1, y2:0, stop:0 rgb(255, 255, 255), stop:1 "+task.color+")")        
         self.tasksGroup.layout().addWidget(self.tasksCheck[uid])
         
         #adding the task to the validator widget
         if not uid in self.validations.tasks :
             self.validations.tasks[uid] = self
-        
-        
+
         #TODO: for now, all clips have all tasks. We have to make it per clip
         for uid in self.clips :
             self.clips[uid].addTask(task)

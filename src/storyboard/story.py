@@ -164,12 +164,9 @@ class Story(QtGui.QListWidgetItem):
         
 
     def updateComments(self):
-        commentText = ""
-        
-        for comment in self.comments :
-            user = "Unknown"
-            if self.comments[comment].useruid in self.clip.client.users.users :
-                user = self.clip.client.users.users[self.comments[comment].useruid].login            
+        commentText = ""        
+        for comment in self.comments :          
+            user = self.clip.client.getUserName(self.comments[comment].useruid)            
             commentText = commentText + self.FORMATTER_COMMENT.format(comment = self.comments[comment].comment, author = user, date = self.comments[comment].date.toString("dd-MM hh:mm")) + "<br>"  
         self.viewText = (self.FORMATTER_CLIP.format(comments = commentText, scene = str(self.clip.scene).zfill(3), shot = str(self.clip.shot).zfill(3), inClip=self.clip.inClip, outClip=self.clip.outClip ))    
 
