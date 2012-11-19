@@ -1,6 +1,7 @@
 from PyQt4 import QtGui, QtCore
 import util
 
+from editclipwidget import EditClipWidget
 
 class ClipItemDelegate(QtGui.QStyledItemDelegate):
     def __init__(self, *args, **kwargs):
@@ -27,7 +28,6 @@ class ClipItemDelegate(QtGui.QStyledItemDelegate):
         return QtCore.QSize(Clip.TEXTWIDTH + Clip.PADDING, Clip.CLIPSIZE)  
 
 
-
 class Clip(QtGui.QListWidgetItem):
 
     '''
@@ -50,16 +50,7 @@ class Clip(QtGui.QListWidgetItem):
         
         self.scene = None
         self.shot = None
-       
-#        self.treeItem       = treeClip(self)
-#        self.timelineItem   = ClipTimeline(self)
-#        self.animTreeItem   = QtGui.QTreeWidgetItem(self.treeItem)
-#        self.commentsItem    = QtGui.QTreeWidgetItem(self.treeItem)
-#
-#        self.animTreeItem.setText(0, "Animation Scenes")
-#        self.commentsItem.setText(0, "Comments")
-        
-        #self.treeItem.addChild(self.animTreeItem)
+
         self.inClip     = 0
         self.outClip    = 0
         self.start      = 0
@@ -68,16 +59,6 @@ class Clip(QtGui.QListWidgetItem):
         self.handleIn   = 0
         self.handleOut  = 0
         self.comments   = None
-        #self.animScene  = {}
-    
-#    def addAnimScene(self, scene):
-#        if scene.uid in self.animScene :
-#            self.animScene[scene.uid].update(scene)
-#        else :
-#            self.animScene[scene.uid] = animTreeItem(self.animTreeItem, scene)
-#            self.animTreeItem.addChild(self.animScene[scene.uid])
-#            self.animScene[scene.uid].update(scene)
-            
 
     def update(self, message, client):
         '''     
@@ -93,37 +74,30 @@ class Clip(QtGui.QListWidgetItem):
         self.start      = message['start']
         self.end        = message['end']
         self.duration   = message['duration']
-
-        #remove all comments
-        #self.commentsItem.takeChildren()
-#        
-#        self.comments = self.client.comments.getComments(self.uid, 0)  
-#        for comment in self.comments :
-#            user = "Unknown"
-#            if comment.useruid in self.client.users.users : 
-#                user = self.client.users.users[comment.useruid].login
-#                c = QtGui.QTreeWidgetItem(self.commentsItem)
-#                c.setText(0, (user + " (" + comment.date.toString("dd-MM hh:mm") + ") :" + comment.comment))
-        
-        
-#        self.treeItem.update()
-#        self.timelineItem.update()
         
         self.setText(self.FORMATTER_CLIP.format(scene = str(self.scene).zfill(3), shot = str(self.shot).zfill(3), inClip = str(self.inClip).zfill(2), outClip = str(self.outClip).zfill(2), handleIn = str(self.handleIn).zfill(2), handleOut = str(self.handleOut).zfill(2)))
+
+    def editClip(self):
+        editclip = EditClipWidget(self)
+        if editclip.exec_() == 1 :
+            self.client.send(dict(command='edits', action = 'edit', uid=self.uid, inClip = editclip.start.value(), outClip = editclip.end.value(), handleIn = editclip.handleIn.value(), handleOut = editclip.handleOut.value() ))
+            
+   
+    def clicked(self):
+        '''
+        A clip was clicked
+        '''
+        menu = QtGui.QMenu(self.client)
+        actionEdit = QtGui.QAction("Edit clip", menu)
     
-#    def updateComment(self):
-#        #remove all comments
-#        self.commentsItem.takeChildren()
-#        
-#        self.comments = self.client.comments.getComments(self.uid, 0)  
-#        for comment in self.comments :
-#            user = "Unknown"
-#            if comment.useruid in self.client.users.users : 
-#                user = self.client.users.users[comment.useruid].login
-#                c = QtGui.QTreeWidgetItem(self.commentsItem)
-#
-#                c.setText(0, (user + " (" + comment.date.toString("dd-MM hh:mm") + ") : " + comment.comment))
+        if self.client.power <= 16 :
+            actionEdit.setDisabled(True)
         
+        # Triggers
+        actionEdit.triggered.connect(self.editClip)
+    
+        menu.addAction(actionEdit)
+        menu.popup(QtGui.QCursor.pos())        
    
     def __ge__(self, other):
         ''' Comparison operator used for item list sorting '''        

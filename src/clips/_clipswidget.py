@@ -23,6 +23,7 @@ class ClipsWidget(FormClass, BaseClass):
         self.clipList.setItemDelegate(ClipItemDelegate(self))
         self.client.clipUpdated.connect(self.processClipInfo)
         self.clipList.itemClicked.connect(self.clipClick)
+        self.clipList.itemPressed.connect(self.clipPressed)
         
         self.filterScene.textChanged.connect(self.eventFilterChanged)
         
@@ -43,11 +44,17 @@ class ClipsWidget(FormClass, BaseClass):
             self.clips[uid].update(message, self.client)
             
             self.clipUpdated.emit(self.clips[uid])
-            
+    
+    def clipPressed(self, item):
+        if QtGui.QApplication.mouseButtons() == QtCore.Qt.RightButton :  
+            item.clicked()
+                        
     def clipClick(self, item):
         ''' we have selected a clip
         We re-emit a signal for all modules interested in that. '''
+
         self.clipClicked.emit(item)
+        
 
     def eventFilterChanged(self):
         if self.filterScene.text() == "" :
