@@ -25,11 +25,9 @@ class Relayer(QtCore.QObject):
         self.parent = parent
         self.socket = local_socket
         self.client = client
-        
-        
+
         self.blockSize = 0
         self.relay = session
-
 
         self.socket.readyRead.connect(self.readDatas)
         self.socket.disconnected.connect(self.inputDisconnected)
@@ -40,9 +38,6 @@ class Relayer(QtCore.QObject):
         #Find out whether this really does what it should (according to docs, sockets should be manually deleted to conserver resources)
         self.socket.deleteLater()
         self.__logger.debug("destructor called")        
-           
-
-
 
     def readDatas(self):
         ins = QtCore.QDataStream(self.socket)        
@@ -56,11 +51,8 @@ class Relayer(QtCore.QObject):
             if self.socket.bytesAvailable() < self.blockSize:
                 return
             
-            action = json.loads(ins.readQString())
-            
+            action = json.loads(ins.readQString())           
             action["relay"] = self.relay
-            
-            
             self.client.send(action)
 
             self.blockSize = 0
@@ -74,6 +66,7 @@ class Relayer(QtCore.QObject):
     # JSON Protocol v2 Implementation below here
     #
     def send(self, message):
+        
         data = json.dumps(message)
         self.__logger.info("Outgoing JSON Message: " + data)
         self.writeToClient(data)
