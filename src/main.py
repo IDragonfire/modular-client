@@ -9,7 +9,6 @@ sip.setapi('QProcess', 2)
 
 #Set up a robust logging system
 import util
-import win32com.client
 util.startLogging()
 
 

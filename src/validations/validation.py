@@ -83,8 +83,8 @@ class ValidationClip(QtGui.QListWidgetItem):
             value = .7
             sat = 0.5
         elif state  == 2 :
-
             sat = 1.0
+
         qtcolor.setHsvF(qtcolor.hueF(), sat, value)
         return qtcolor.name()
 
@@ -216,7 +216,6 @@ class ValidationClip(QtGui.QListWidgetItem):
             if self.retake :
                 self.getComments()
                 
-
     def stepPressed(self):
         canDisplay = False
         menu = QtGui.QMenu(self.client)
@@ -262,7 +261,7 @@ class ValidationClip(QtGui.QListWidgetItem):
                 ValidLastVersion = self.getClipToDisplay(uid, 1)
                 if ValidLastVersion :
                     tasksToRetake[task.name] = ValidLastVersion   
-            
+                    
         items = []    
         for name in tasksToRetake :
             items.append(name)
@@ -286,11 +285,11 @@ class ValidationClip(QtGui.QListWidgetItem):
         tasksToValidate = {}
         for uid in self.tasks :
             task = self.tasks[uid]
-
             ValidLastVersion = self.getClipToDisplay(uid, 1)
-    
+   
             if ValidLastVersion :
                 tasksToValidate[task.name] = ValidLastVersion   
+
         items = []    
         for name in tasksToValidate :
             items.append(name)

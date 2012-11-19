@@ -764,10 +764,22 @@ class ClientWindow(FormClass, BaseClass):
             except:
                 logger.error("Error dispatching JSON: " + action, exc_info=sys.exc_info())
 
+
+    def dispatchToClient(self, message):
+        if message["action"] == "get_user" :
+            result = self.getUserName(message["useruid"])
+            self.relayServer.dispatch(message["relay"], dict(requestid=message["requestid"], command="client", action = message["action"], username = result))
+            
     # 
     # JSON Protocol v3 Implementation below here
     #
     def send(self, message, qfile = None):
+        
+        command = message.get('command', '')
+        if command == "client" :
+            self.dispatchToClient(message)
+            return
+        
         data = json.dumps(message)
         if qfile == None :
             logger.info("Outgoing JSON Message: " + data)

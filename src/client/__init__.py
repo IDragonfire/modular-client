@@ -1,7 +1,7 @@
 # Initialize logging system
 import logging
 import util
-logger = logging.getLogger("faf.client")
+logger = logging.getLogger("npm.client")
 #logger.setLevel(logging.DEBUG)
 
 VERSION        = 0

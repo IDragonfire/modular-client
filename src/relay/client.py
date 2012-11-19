@@ -29,12 +29,19 @@ import logging
 import time
 import json
 import random
+#import win32com.client
 
 logger= logging.getLogger("npm.client")
 logger.setLevel(logging.DEBUG)
 
 class npmClient(object) :
     def __init__(self, app = None, parent = None) :
+        
+#        if not self.WindowExists("npmService.exe") :
+#            logger.info(">>> --------------------------- Service is not running")
+#            instance = QtCore.QProcess()
+#            instance.startDetached("\\\\server01\\shared\\SharedNpm\\service\\npmService.exe")
+        
         self.socket = QtNetwork.QLocalSocket()  
 
         self.blockSize = 0   
@@ -52,6 +59,16 @@ class npmClient(object) :
             self.displayMessage("error", "Cannot connect to the server.")
             self.stop()
 
+#    def WindowExists(self, process):
+#        strComputer = "."
+#        objWMIService = win32com.client.Dispatch("WbemScripting.SWbemLocator")
+#        objSWbemServices = objWMIService.ConnectServer(strComputer,"root\cimv2")
+#        colItems = objSWbemServices.ExecQuery("SELECT * FROM Win32_Process WHERE Name = '%s'" % process)
+#        if len(colItems) > 0 :
+#            return True
+#        else :
+#            return False
+
     def isConnected(self):
         return self.socket.isValid()
 
@@ -59,11 +76,10 @@ class npmClient(object) :
         if self.parent :
             if hasattr(self.parent, "cleaning"):
                 self.parent.cleaning()
-
         self.requests = {}
         if self.socket.state() == QtNetwork.QLocalSocket.ConnectedState:
             self.socket.disconnectFromServer()
-        
+    
     def cleanRequests(self):
         self.requests = {}
     
