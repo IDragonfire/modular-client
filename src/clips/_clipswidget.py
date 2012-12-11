@@ -79,18 +79,24 @@ class ClipsWidget(FormClass, BaseClass):
         if self.filterScene.text() == "" :
             for uid in self.clips :
                 self.clips[uid].setHidden(0)      
-        else :        
-            filterText = filter(lambda x: x.isdigit(), self.filterScene.text())
+        else : 
             
-            if filterText == "" :
-                return
+            scenes = []
+      
+            filterTexts = self.filterScene.text().split() 
             
-
+            for f in filterTexts :
+                filtered = int(filter(lambda x: x.isdigit(), f))
+                
+                if filtered == "" :
+                    continue
+                
+                scenes.append(filtered)
+            
+            
             for uid in self.clips :
                 
-                if self.clips[uid].scene == int(filterText) :
+                if self.clips[uid].scene in scenes :
                     self.clips[uid].setHidden(0)
                 else :
                     self.clips[uid].setHidden(1)
-
-          
