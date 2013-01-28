@@ -22,7 +22,14 @@ BUGREPORT_USER = 'pre-login'
 
 from util import VERSION_STRING, APPDATA_DIR, PERSONAL_DIR, LOG_FILE_GAME, LOG_FILE_FAF, readfile,\
     readlines
-from PyQt4 import QtGui, QtCore
+
+try :
+    from PyQt4 import QtGui, uic, QtCore
+except :
+    from PySide import QtGui, QtCore
+    QtCore.pyqtSignal = QtCore.Signal 
+    QtCore.pyqtSlot = QtCore.Slot 
+
 import hashlib
 import sys
 from util import logger

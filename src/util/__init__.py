@@ -103,9 +103,19 @@ if not os.path.isdir(THEME_DIR):
     
 if not os.path.isdir(LOG_DIR):
     os.makedirs(LOG_DIR)
-    
 
-from PyQt4 import QtGui, uic, QtCore
+usingPySide = False
+
+try :
+    from PyQt4 import QtGui, uic, QtCore
+except :
+    usingPySide = True
+
+    from PySide import QtGui, QtCore
+    QtCore.pyqtSignal = QtCore.Signal 
+    QtCore.pyqtSlot = QtCore.Slot 
+    
+    
 import shutil
 import hashlib
 import re

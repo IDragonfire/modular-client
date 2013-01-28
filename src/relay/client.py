@@ -34,15 +34,27 @@
 #npmclient.stop()
 
 
-import sip
-sip.setapi('QString', 2)
-sip.setapi('QVariant', 2)
-sip.setapi('QStringList', 2)
-sip.setapi('QList', 2)
-sip.setapi('QProcess', 2)
 
-from PyQt4 import QtCore, QtGui
-from PyQt4 import QtNetwork
+try :
+    import sip
+    sip.setapi('QString', 2)
+    sip.setapi('QVariant', 2)
+    sip.setapi('QStringList', 2)
+    sip.setapi('QList', 2)
+    sip.setapi('QProcess', 2)
+    from PyQt4 import QtCore, QtGui
+    from PyQt4 import QtNetwork
+except :
+    print "No PyQt4, trying PySide"
+    try :
+        from PySide import QtCore, QtGui
+        from PySide import QtNetwork
+    except :
+        print "No PyQt4 or PySide :("
+        
+
+        
+    
 import util
 import logging
 import time
@@ -73,23 +85,15 @@ class npmClient(object) :
         self.socket.readyRead.connect(self.readFromServer)
         self.socket.disconnected.connect(self.disconnectedFromServer)
         
+
+    def isConnected(self):
+        return self.socket.isValid()
+
+    def start(self):
         self.socket.connectToServer("npmClient")
         if not self.socket.waitForConnected(1000) :
             self.displayMessage("error", "Cannot connect to the server.")
             self.stop()
-
-#    def WindowExists(self, process):
-#        strComputer = "."
-#        objWMIService = win32com.client.Dispatch("WbemScripting.SWbemLocator")
-#        objSWbemServices = objWMIService.ConnectServer(strComputer,"root\cimv2")
-#        colItems = objSWbemServices.ExecQuery("SELECT * FROM Win32_Process WHERE Name = '%s'" % process)
-#        if len(colItems) > 0 :
-#            return True
-#        else :
-#            return False
-
-    def isConnected(self):
-        return self.socket.isValid()
 
     def stop(self) :
         if self.parent :
@@ -234,5 +238,4 @@ class npmClient(object) :
             self.displayMessage("error", "Connection to the server lost and cannot (re-)connect.")
             self.stop()
 
-            
             
