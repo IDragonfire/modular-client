@@ -23,7 +23,14 @@ CRASHREPORT_USER = "pre-login"
 
 from util import APPDATA_DIR, PERSONAL_DIR, VERSION_STRING, LOG_FILE_FAF,\
     readlines
-from PyQt4 import QtGui, QtCore
+    
+try :
+    from PyQt4 import QtGui, uic, QtCore
+except :
+    from PySide import QtGui, QtCore
+    QtCore.pyqtSignal = QtCore.Signal 
+    QtCore.pyqtSlot = QtCore.Slot 
+
 import traceback
 import hashlib
 

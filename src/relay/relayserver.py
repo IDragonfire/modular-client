@@ -15,9 +15,14 @@
 
 
 
+try :
+    from PyQt4 import QtCore, QtNetwork, QtGui
+except :
+    from PySide import QtCore, QtNetwork, QtGui
+    QtCore.pyqtSignal = QtCore.Signal 
+    QtCore.pyqtSlot = QtCore.Slot 
 
 
-from PyQt4 import QtCore, QtNetwork, QtGui
 
 
 from types import IntType, FloatType, ListType, DictType
