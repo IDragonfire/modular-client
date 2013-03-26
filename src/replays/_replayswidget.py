@@ -21,6 +21,8 @@
 
 
 from PyQt4 import QtCore, QtGui
+from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
+from games.moditem import mods 
 import util
 from replays import logger
 import os
@@ -28,6 +30,8 @@ import fa
 import time
 import client
 import json
+
+from replays.replayitem import ReplayItem, ReplayItemDelegate
 
 # Replays uses the new Inheritance Based UI creation pattern
 # This allows us to do all sorts of awesome stuff by overriding methods etc.
@@ -46,7 +50,14 @@ class ReplaysWidget(BaseClass, FormClass):
         client.replaysTab.layout().addWidget(self)
         
         client.gameInfo.connect(self.processGameInfo)
-            
+        client.replayVault.connect(self.replayVault)    
+        
+        self.onlineReplays = {}
+        self.onlineTree.setItemDelegate(ReplayItemDelegate(self))
+        self.replayDownload = QNetworkAccessManager()
+        self.replayDownload.finished.connect(self.finishRequest)
+        self.searchButton.pressed.connect(self.searchVault)
+        
         self.myTree.itemDoubleClicked.connect(self.myTreeDoubleClicked)
         self.myTree.itemPressed.connect(self.myTreePressed)
         self.myTree.header().setResizeMode(0, QtGui.QHeaderView.ResizeToContents)
@@ -62,38 +73,97 @@ class ReplaysWidget(BaseClass, FormClass):
         
         self.games = {}
         
+        self.onlineTree.itemDoubleClicked.connect(self.onlineTreeDoubleClicked)
+        self.onlineTree.itemClicked.connect(self.onlineTreeClicked)
         logger.info("Replays Widget instantiated.")
 
-        # Old replay vault code adapted to this.                
-        self.loaded = False
-        self.client.showReplays.connect(self.reloadView)
-        self.webView.loadFinished.connect(self.webView.show)
+        
+    def searchVault(self):
+        self.client.send(dict(command="replay_vault", action="search", rating = self.minRating.value(), map = self.mapName.text(), player = self.playerName.text(), mod = self.modList.currentText()))
+        self.onlineTree.clear()
 
-        
-    @QtCore.pyqtSlot()
-    def reloadView(self):
-        if (self.loaded):
-            return
-        self.loaded = True
-        
-        #self.webView.setVisible(False)
+    def reloadView(self):         
+        self.client.send(dict(command="replay_vault", action="list"))
 
-        #If a local theme CSS exists, skin the WebView with it
-        if util.themeurl("vault/style.css"):
-            self.webView.settings().setUserStyleSheetUrl(util.themeurl("vault/style.css"))
-        self.webView.setUrl(QtCore.QUrl("http://www.faforever.com/webcontent/replayvault?username={user}&pwdhash={pwdhash}".format(user=self.client.login, pwdhash=self.client.password)))
+    def finishRequest(self, reply):
+        faf_replay = QtCore.QFile(os.path.join(util.CACHE_DIR, "temp.fafreplay"))
+        faf_replay.open(QtCore.QIODevice.WriteOnly | QtCore.QIODevice.Truncate)                
+        faf_replay.write(reply.readAll())
+        faf_replay.flush()
+        faf_replay.close()  
+        fa.exe.replay(os.path.join(util.CACHE_DIR, "temp.fafreplay"))
+
+    def onlineTreeClicked(self, item):
+        if hasattr(item, "moreInfo") :
+            if item.moreInfo == False :
+                self.client.send(dict(command="replay_vault", action="info_replay", uid = item.uid))
+            else :
+                self.replayInfos.clear()
+                self.replayInfos.setHtml(item.replayInfo)
+                
+    def onlineTreeDoubleClicked(self, item):
+        if hasattr(item, "url") :
+            self.replayDownload.get(QNetworkRequest(QtCore.QUrl(item.url))) 
+
+
+    def replayVault(self, message):
+        action = message["action"]
+        if action == "list_recents" :
+            self.onlineReplays = {}
+            replays = message["replays"]
+            for replay in replays :
+                uid = replay["id"]
         
-        
+                if uid not in self.onlineReplays:
+                    self.onlineReplays[uid] = ReplayItem(uid, self)
+                    self.onlineReplays[uid].update(replay, self.client)
+                else:
+                    self.onlineReplays[uid].update(replay, self.client)
+                    
+            self.updateOnlineTree()
+            
+        elif action == "info_replay" :
+            uid = message["uid"]
+            if uid in self.onlineReplays:
+                self.onlineReplays[uid].infoPlayers(message["players"])
+                
+
     def focusEvent(self, event):
         self.updatemyTree()
+        self.reloadView()
         return BaseClass.focusEvent(self, event)
     
     def showEvent(self, event):
         self.updatemyTree()
+        self.reloadView()
         return BaseClass.showEvent(self, event)
 
                 
+    def updateOnlineTree(self):
+        self.replayInfos.clear()
+        self.onlineTree.clear()
+        buckets = {}
+        for uid in self.onlineReplays :
+            bucket = buckets.setdefault(self.onlineReplays[uid].startDate, [])
+            bucket.append(self.onlineReplays[uid])
+            
+        for bucket in buckets.keys():
+            bucket_item = QtGui.QTreeWidgetItem()
+            self.onlineTree.addTopLevelItem(bucket_item)
+            
+            bucket_item.setIcon(0, util.icon("replays/bucket.png"))                                
+            bucket_item.setText(0, "<font color='white'>" + bucket+"</font>")
+            bucket_item.setText(1,"<font color='white'>" + str(len(buckets[bucket])) + " replays</font>")
+            
+            
+            
+            for replay in buckets[bucket]:
+                bucket_item.addChild(replay)
+                replay.setFirstColumnSpanned(True)
+                replay.setIcon(0, replay.icon)
                 
+            bucket_item.setExpanded(True)
+    
     def updatemyTree(self):
         self.myTree.clear()
         

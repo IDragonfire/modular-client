@@ -95,12 +95,7 @@
          <number>0</number>
         </property>
         <item row="0" column="0">
-         <widget class="QWebView" name="webView">
-          <property name="url">
-           <url>
-            <string>http://www.faforever.com/?page_id=114</string>
-           </url>
-          </property>
+         <widget class="QWebView" name="whatNewsView">
          </widget>
         </item>
        </layout>
@@ -201,6 +196,8 @@
      <addaction name="actionSetGamePath"/>
      <addaction name="actionSetGamePort"/>
      <addaction name="actionSaveGamelogs"/>
+     <addaction name="separator"/>
+     <addaction name="actionSetMumbleOptions"/>
     </widget>
     <widget class="QMenu" name="menuTheme">
      <property name="title">
@@ -240,7 +237,6 @@
     <addaction name="actionWiki"/>
     <addaction name="separator"/>
     <addaction name="actionTechSupport"/>
-    <addaction name="actionReportBug"/>
     <addaction name="actionShowLogs"/>
     <addaction name="separator"/>
     <addaction name="actionAbout"/>
@@ -249,7 +245,7 @@
     <property name="title">
      <string>Links</string>
     </property>
-    <addaction name="actionLinkTeamspeak"/>
+    <addaction name="actionLinkMumble"/>
     <addaction name="separator"/>
     <addaction name="actionLinkUnitDB"/>
     <addaction name="separator"/>
@@ -301,9 +297,9 @@
     <string>Tech Support</string>
    </property>
   </action>
-  <action name="actionLinkTeamspeak">
+  <action name="actionLinkMumble">
    <property name="text">
-    <string>Teamspeak</string>
+    <string>Mumble</string>
    </property>
   </action>
   <action name="actionSetAutoLogin">
@@ -342,6 +338,11 @@
   <action name="actionSetGamePort">
    <property name="text">
     <string>Game Port...</string>
+   </property>
+  </action>
+  <action name="actionSetMumbleOptions">
+   <property name="text">
+    <string>Voice...</string>
    </property>
   </action>
   <action name="actionSetSoundEffects">
