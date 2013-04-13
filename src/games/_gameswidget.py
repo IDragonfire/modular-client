@@ -70,6 +70,8 @@ class GamesWidget(FormClass, BaseClass):
         self.radius = 0
         self.race = None
         self.ispassworded = False
+        self.rankedtype = 2
+        self.Button1v1.setChecked(True)
         
         self.client.modInfo.connect(self.processModInfo)
         self.client.gameInfo.connect(self.processGameInfo)
@@ -81,6 +83,9 @@ class GamesWidget(FormClass, BaseClass):
         self.gameList.itemDoubleClicked.connect(self.gameDoubleClicked)
 
         self.modList.itemDoubleClicked.connect(self.hostGameClicked)
+
+        self.Button1v1.toggled.connect(self.toggle1v1)
+        self.Button2v2.toggled.connect(self.toggle2v2)
 
         #Load game name from settings (yay, it's persistent!)        
         self.loadGameName()
@@ -148,8 +153,31 @@ class GamesWidget(FormClass, BaseClass):
                 self.gameList.takeItem(self.gameList.row(self.games[uid]))
                 del self.games[uid]    
             return
+
+    def getmodstring(self):
+        if self.rankedtype == 1:
+            return "ladder1v1"
+        elif self.rankedtype == 2:
+            return "ladder2v2"
+    
+    @QtCore.pyqtSlot(bool)
+    def toggle1v1(self, state):
+        if not state and self.rankedtype == 1: #if you click on the button while it is already active
+            self.Button1v1.setChecked(True)
+        if state and self.rankedtype != 1:
+            self.stopSearchRanked()
+            self.rankedtype = 1
+            self.Button2v2.setChecked(False)
+
+    @QtCore.pyqtSlot(bool)
+    def toggle2v2(self, state):
+        if not state and self.rankedtype == 2:
+            self.Button2v2.setChecked(True)
+        if state and self.rankedtype != 2:
+            self.stopSearchRanked()
+            self.rankedtype = 2
+            self.Button1v1.setChecked(False)
         
-                    
             
 
     def startSearchRanked(self, race):
@@ -166,7 +194,7 @@ class GamesWidget(FormClass, BaseClass):
         if (self.searching):
             logger.info("Switching Ranked Search to Race " + str(race))
             self.race = race
-            self.client.send(dict(command="game_matchmaking", mod="ladder1v1", state="settings", faction = self.race))
+            self.client.send(dict(command="game_matchmaking", mod=self.getmodstring(), state="settings", faction = self.race))
         else:
             #Experimental UPnP Mapper - mappings are removed on app exit
             if self.client.useUPnP:
@@ -179,7 +207,7 @@ class GamesWidget(FormClass, BaseClass):
             self.searchProgress.setVisible(True)
             self.labelAutomatch.setText("Searching...")
             self.rankedTimer.start(RANKED_SEARCH_EXPANSION_TIME)
-            self.client.send(dict(command="game_matchmaking", mod="ladder1v1", state="start", gameport = self.client.gamePort, faction = self.race))
+            self.client.send(dict(command="game_matchmaking", mod=self.getmodstring(), state="start", gameport = self.client.gamePort, faction = self.race))
             #self.client.writeToServer('SEARCH_LADDERGAME', 'START', self.client.gamePort)
 
             
@@ -192,8 +220,8 @@ class GamesWidget(FormClass, BaseClass):
             self.rankedTimer.stop()
         else:
             logger.debug("Expanding search to " + str(self.radius))
-        
-        self.client.send(dict(command="game_matchmaking", mod="ladder1v1", state="expand", rate=self.radius))
+
+        self.client.send(dict(command="game_matchmaking", mod=self.getmodstring(), state="expand", rate=self.radius))
             
             
     @QtCore.pyqtSlot()
@@ -201,11 +229,11 @@ class GamesWidget(FormClass, BaseClass):
         if (self.searching):
             logger.debug("Stopping Ranked Search")
             self.rankedTimer.stop()
-            self.client.send(dict(command="game_matchmaking", mod="ladder1v1", state="stop"))          
+            self.client.send(dict(command="game_matchmaking", mod=self.getmodstring(), state="stop"))          
             self.searching = False
         
         self.searchProgress.setVisible(False)
-        self.labelAutomatch.setText("1 vs 1 Automatch")
+        self.labelAutomatch.setText("Automatch")
         
         self.disconnectRankedToggles()
         self.rankedAeon.setChecked(False)
