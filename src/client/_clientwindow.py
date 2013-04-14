@@ -1315,10 +1315,17 @@ class ClientWindow(FormClass, BaseClass):
         if message[modkey] == "ladder1v1":
             arguments.append(self.games.race)
             #Player 1v1 rating
-            arguments.append('/mean')        
-            arguments.append(str(self.players[self.login]["ladder_rating_mean"]))    
-            arguments.append('/deviation')        
-            arguments.append(str(self.players[self.login]["ladder_rating_deviation"]))            
+            arguments.append('/mean')
+            arguments.append(str(self.players[self.login]["ladder_rating_mean"]))
+            arguments.append('/deviation')
+            arguments.append(str(self.players[self.login]["ladder_rating_deviation"]))
+        elif message[modkey] == "ladder2v2":
+            arguments.append(self.games.race)
+            #Player 2v2 rating
+            arguments.append('/mean')
+            arguments.append(str(self.players[self.login]["ladder2v2_rating_mean"]))
+            arguments.append('/deviation')
+            arguments.append(str(self.players[self.login]["ladder2v2_rating_deviation"]))
 
         else :
             #Player global rating
