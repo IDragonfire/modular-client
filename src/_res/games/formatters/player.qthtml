@@ -1,0 +1,11 @@
+<table border="0" cellpadding="0" cellspacing="0" width= "230">
+<tbody>
+<tr>
+<td><font color="white"><b>{name}</b></font></td>
+<td><font color="silver">{rating}</font></td>
+<td><font color="white">{team}</font></td>
+<td><font color="silver"><b>{ready}</b></font></td>
+</tr>
+</tbody>
+</table>
+
