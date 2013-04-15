@@ -88,7 +88,8 @@ class ClientWindow(FormClass, BaseClass):
     autoJoin            = QtCore.pyqtSignal(list)
     featuredModManager  = QtCore.pyqtSignal(str)
     featuredModManagerInfo = QtCore.pyqtSignal(dict)
-    replayVault         = QtCore.pyqtSignal(dict) 
+    replayVault         = QtCore.pyqtSignal(dict)
+    TeammatesInfo       = QtCore.pyqtSignal(dict)
 
     #These signals are emitted whenever a certain tab is activated
     showReplays     = QtCore.pyqtSignal()
@@ -1394,7 +1395,10 @@ class ClientWindow(FormClass, BaseClass):
         self.modInfo.emit(message)    
     
     def handle_game_info(self, message):
-        self.gameInfo.emit(message)                    
+        self.gameInfo.emit(message)
+
+    def handle_teammates_info(self, message):
+        self.TeammatesInfo.emit(message) 
     
     def handle_replay_vault(self, message):
         self.replayVault.emit(message)
