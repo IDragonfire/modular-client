@@ -26,6 +26,7 @@ import util
 from games.gameitem import GameItem, GameItemDelegate
 from games.moditem import ModItem, mod_invisible, mods
 from games.hostgamewidget import HostgameWidget
+from games.teamladderwidget import TeamLadderWidget
 from games import logger
 from fa import Faction
 import random
@@ -70,7 +71,7 @@ class GamesWidget(FormClass, BaseClass):
         self.radius = 0
         self.race = None
         self.ispassworded = False
-        self.rankedtype = 2
+        self.rankedtype = 1
         self.Button1v1.setChecked(True)
         
         self.client.modInfo.connect(self.processModInfo)
@@ -177,6 +178,9 @@ class GamesWidget(FormClass, BaseClass):
             self.stopSearchRanked()
             self.rankedtype = 2
             self.Button1v1.setChecked(False)
+            teamladderwidget = TeamLadderWidget(self)
+            teamladderwidget.exec_()
+            
         
             
 
