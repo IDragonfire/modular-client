@@ -22,11 +22,22 @@
 
 from PyQt4 import QtCore, QtGui
 
+from games import logger
 import util
 
 import copy
 
 FormClass, BaseClass = util.loadUiType("games/ladder2v2.ui")
+
+#some dummy stuff to test it out.
+class DummyClient(object):
+    def send(self,dic):
+        logger.info("Widget sent fake message: %s" % str(dic))
+
+tminfo1 = {"uid": 10, "name": "player1","rating_mean": 1000, "rating_deviation":500, "state":0, "teamname":"TAG"}
+tminfo2 = {"uid": 15, "name": "paulo","rating_mean": 800, "rating_deviation":200, "state":0, "teamname":"Glorious"}
+tminfo3 = {"uid": 20, "name": "clarice","rating_mean": 1500, "rating_deviation":100, "state":1, "teamname":"DIK"}
+tminfo4 = {"uid": 22, "name": "devilpoopook9","rating_mean": 1328, "rating_deviation":28, "state":2, "teamname":"ErrO"}
 
 
 class TeamLadderWidget(FormClass, BaseClass):
@@ -40,28 +51,36 @@ class TeamLadderWidget(FormClass, BaseClass):
     update: The player has clicked or doubleclicked a certain player and this needs to be send to that
             respective player. Gives a uid and state argument as well.
     '''
-    def __init__(self, parent, item, *args, **kwargs):
+    def __init__(self, parent, *args, **kwargs):
         BaseClass.__init__(self, *args, **kwargs)       
 
         self.setupUi(self)
         self.parent = parent
-        self.client = self.parent.client
+        #self.client = self.parent.client
+        self.client = DummyClient()
         self.setStyleSheet(self.parent.client.styleSheet())
         
         self.setWindowTitle ("Finding 2v2 ladder partner")
 
         self.client.send(dict(command="2v2ladder",type="start")) # this command also sends client.login, so the server
                                                          # can know to which teams the player belongs.
-        self.client.TeammatesInfo.connect(self.processTeammatesInfo)
-        self.aboutToQuit.connect(self.quiting)
+        #self..client.TeammatesInfo.connect(self.processTeammatesInfo)
+        #self.aboutToQuit.connect(self.quiting)
         self.PlayerList.setItemDelegate(PlayerItemDelegate(self))
         self.PlayerList.itemClicked.connect(self.playerclicked)
         self.PlayerList.itemDoubleClicked.connect(self.playerdoubleclicked)
 
-        self.player = self.client.players[self.client.login]
+        self.player = parent.client.players[parent.client.login]
         self.players = {}
         self.selected = [] #list of uid's of selected players
         self.doubleselected = None # the uid of the person that was double clicked
+
+        logger.info("Done with the teamladder dialog stuff")
+        #test stuff
+        self.processTeammatesInfo(tminfo1)
+        self.processTeammatesInfo(tminfo2)
+        self.processTeammatesInfo(tminfo3)
+        self.processTeammatesInfo(tminfo4)
 
     @QtCore.pyqtSlot(dict)
     def processTeammatesInfo(self, message):
@@ -73,7 +92,7 @@ class TeamLadderWidget(FormClass, BaseClass):
         name = str(player name)
         rating_mean = int
         rating_deviation = int
-        team = str(teamname)
+        teamname = str(teamname)
         state = int     state = 0: nothing special, state = 1: player has selected you,
                         state = 2: player has doubleclicked you
         }
@@ -83,23 +102,44 @@ class TeamLadderWidget(FormClass, BaseClass):
         If the dictionary contains a key named 'remove' that player will be removed from the listing.
         '''
         uid = message["uid"]
-        
+        if message.has_key("teammessage"):
+            return #Ignore this message, it is meant for the second dialog.
         if uid not in self.players:
             if not message.has_key("remove"):
-                self.players[uid] = PlayerItem(uid)
-                self.PlayerList.addItem(self.games[uid])
-                self.games[uid].update(message, self.client)
+                self.players[uid] = self.createPlayerItem(message)
         else:
             if message.has_key("remove"): # a player has stopped searching
                 self.PlayerList.removeItemWidget(self.players[uid])
                 del self.players[uid]
+                if uid in self.selected:
+                    self.selected.remove(uid)
+                if self.doubleselected == uid:
+                    self.doubleselected = None
             else:
-                self.games[uid].update(message, self.client)
+                self.PlayerList.removeItemWidget(self.players[uid])
+                self.players[uid] = self.createPlayerItem(message)
+                if uid in self.selected:
+                    self.players[uid].setSelected(True)
+                if self.doubleselected == uid and self.players[uid].state == 2:
+                    pass #start an actual game.
+
+    def createPlayerItem(self, message):
+        state = message["state"]
+        uid = message["uid"]
+        if state == 0: item = PlayerItemSearching(uid)
+        if state == 1: item = PlayerItemInterested(uid)
+        if state == 2: item = PlayerItemReady(uid)
+        self.PlayerList.addItem(item)
+        item.update(message, self.client)
+        return item
+        
+                    
     
-    @QtCore.pyqtSlot()
-    def quiting(self):
+    def closeEvent(self,event):
         self.client.send(dict(command="2v2ladder",type="stop"))
-        self.client.TeammatesInfo.disconnect(self.processTeammatesInfo)
+        #self.client.TeammatesInfo.disconnect(self.processTeammatesInfo)
+        logger.info("Closed search dialog")
+        event.accept()
 
 
     @QtCore.pyqtSlot(QtGui.QListWidgetItem)
@@ -114,11 +154,11 @@ class TeamLadderWidget(FormClass, BaseClass):
             self.selected.remove(uid)
             if self.doubleselected == uid:
                 self.doubleselected = None
-            player.deselected()
+            player.setSelected(False)
             self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=0))
         else:
             self.selected.append(uid)
-            player.selected()
+            player.setSelected(True)
             self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=1))
         
 
@@ -127,14 +167,17 @@ class TeamLadderWidget(FormClass, BaseClass):
         uid = player.uid
         if uid not in self.selected:
             self.selected.append(uid)
-        if self.doubleselected != uid: # a new person was doubleclicked
+            player.setSelected(True)
+        if self.doubleselected != uid and self.doubleselected != None: # a new person was doubleclicked
             #de-doubleclick the old one
+            self.players[self.doubleselected].setSelected(False)
             self.client.send(dict(command="2v2ladder",type="update",uid=self.players[self.doubleselected],state=1))
-            self.players[self.doubleselected].selected()
+            #self.players[self.doubleselected].selected()
             #doubleclick the new one
             self.doubleselected = uid
+            player.setSelected(True)
             self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=2))
-            player.doubleselected()
+            #player.doubleselected()
         
 # This whole thing is adapted from games.gameitem.GameItemDelegate, I don't really know what is going on here...
 class PlayerItemDelegate(QtGui.QStyledItemDelegate):
@@ -152,9 +195,13 @@ class PlayerItemDelegate(QtGui.QStyledItemDelegate):
         icon = QtGui.QIcon(option.icon)
         iconsize = icon.actualSize(option.rect.size())
 
-        icon.paint(painter, option.rect.adjusted(5-2, -2, 0, 0), QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
+        option.icon = QtGui.QIcon()     
+        option.text = ""
+        option.widget.style().drawControl(QtGui.QStyle.CE_ItemViewItem, option, painter, option.widget)
+        
+        icon.paint(painter, option.rect.adjusted(0, 0, 0, 0), QtCore.Qt.AlignLeft|QtCore.Qt.AlignVCenter)
 
-        painter.translate(option.rect.left() + iconsize.width() + 10, option.rect.top()+10)
+        painter.translate(option.rect.left() + iconsize.width() + 8, option.rect.top()+0)
         clip = QtCore.QRectF(0, 0, option.rect.width()-iconsize.width() - 10 - 5, option.rect.height())
         html.drawContents(painter, clip)
 
@@ -169,12 +216,16 @@ class PlayerItemDelegate(QtGui.QStyledItemDelegate):
         return QtCore.QSize(PlayerItem.ICONSIZE + PlayerItem.TEXTWIDTH + PlayerItem.PADDING, PlayerItem.ICONSIZE)
 
 
-
+# This class is subclassed, so different background can be defined in the CSS stylesheet.
+# There probably is a more elegant way to do this.
 class PlayerItem(QtGui.QListWidgetItem):
-    TEXTWIDTH = 230
-    ICONSIZE = 110
-    PADDING = 10
+    TEXTWIDTH = 200
+    ICONSIZE = 25
+    PADDING = 5
     WIDTH = ICONSIZE + TEXTWIDTH
+    #COLOR_DEFAULT = QtGui.QColor(238,106,167) #hotpink2
+    #COLOR_SELECTED = QtGui.QColor(134,42,81) #plum pudding
+    #COLOR_SPECIAL = QtGui.QColor(255,0,102) #Broadwaypink
 
     FORMATTER_TEXT = unicode(util.readfile("games/formatters/player.qthtml"))
 
@@ -186,7 +237,7 @@ class PlayerItem(QtGui.QListWidgetItem):
         self.mean = None
         self.deviation = None
         self.rating = None
-        self.team = None
+        self.teamname = None
         self.ready = False
 
     def update(self, message, client):
@@ -198,23 +249,25 @@ class PlayerItem(QtGui.QListWidgetItem):
         self.name       = message['name']
         self.mean       = message['rating_mean']
         self.deviation  = message['rating_deviation']
-        self.team       = message['team']
-        self.state      = message['ready'] # should be an int
+        self.teamname       = message['teamname']
+        self.state      = message['state'] # should be an int
 
         self.rating = self.mean - 3*self.deviation
-        if self.ready == True: 
-            readystr = "Ready"
-        else:
+        if self.state == 0: 
             readystr = "Searching"
+        elif self.state == 1:
+            readystr = "Interested"
+        elif self.state == 2:
+            readystr = "Ready"
 
-        self.setText(self.FORMATTER_TEXT.format(name = self.name, rating = self.rating, team = self.team, ready=readystr))
-
+        self.setText(self.FORMATTER_TEXT.format(name = self.name, rating = self.rating, team = self.teamname, ready=readystr))
+        '''
         #the next bit is taken from chat.chatter.Chatter.update. This should be probably be put in a helper function
         league = self.client.getUserLeague(self.name)
         if self.rating == 0:
             self.setIcon(util.icon("chat/rank/newplayer.png"))
         if league != None:
-            elif league["league"] == 1:
+            if league["league"] == 1:
                 self.setIcon(util.icon("chat/rank/Aeon_Scout.png"))
             elif league["league"] == 2:
                 self.setIcon(util.icon("chat/rank/Aeon_T1.png"))
@@ -225,10 +278,16 @@ class PlayerItem(QtGui.QListWidgetItem):
             elif league["league"] == 5:
                 self.setIcon(util.icon("chat/rank/Aeon_XP.png"))
         else:
-            self.setIcon(util.icon("chat/rank/civilian.png"))
+            self.setIcon(util.icon("chat/rank/newplayer.png"))
+        '''
+        self.setIcon(util.icon("chat/rank/civilian.png"))
 
 
-
-
+class PlayerItemSearching(PlayerItem):
+    pass
+class PlayerItemInterested(PlayerItem):
+    pass
+class PlayerItemReady(PlayerItem):
+    pass
 
 

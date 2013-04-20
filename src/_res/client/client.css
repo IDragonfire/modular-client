@@ -214,6 +214,24 @@ QListWidget::item:selected, QTreeWidget::item:previously-selected
 	border: none;
 }
 
+PlayerItemSearching:selected
+{
+	background: #505050;
+}
+
+PlayerItemInterested
+{
+	background: #1240AB;
+}
+PlayerItemInterested:hover
+{
+	background: #6C8CD5;
+}
+PlayerItemInterested:selected
+{
+	background: #4671D5;
+}
+
  
 QTreeWidget::item:hover
 {

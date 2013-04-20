@@ -51,8 +51,8 @@ class GameItemDelegate(QtGui.QStyledItemDelegate):
         iconsize = icon.actualSize(option.rect.size())
         
         #clear icon and text before letting the control draw itself because we're rendering these parts ourselves
-        option.icon = QtGui.QIcon()        
-        option.text = ""  
+        option.icon = QtGui.QIcon()     
+        option.text = ""
         option.widget.style().drawControl(QtGui.QStyle.CE_ItemViewItem, option, painter, option.widget)
         
         #Shadow
