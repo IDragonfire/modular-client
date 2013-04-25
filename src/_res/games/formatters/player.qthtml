@@ -2,7 +2,8 @@
 <tbody>
 <tr valign = "top">
 <td width = "120"><font color="white"><b>{name}</b></font></td>
-<td width = "25"><font color="silver">{rating}</font></td>
+<td width = "35" halign="right"><font color="silver">{rating}</font></td>
+<td width="5"></td>
 <td width = "75"><font color="white">{team}</font></td>
 <td width = "80"><font color="silver"><b>{ready}</b></font></td>
 </tr>

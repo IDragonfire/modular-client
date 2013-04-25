@@ -88,6 +88,8 @@ class GamesWidget(FormClass, BaseClass):
         self.Button1v1.toggled.connect(self.toggle1v1)
         self.Button2v2.toggled.connect(self.toggle2v2)
 
+        self.teamladderwidget = None
+
         #Load game name from settings (yay, it's persistent!)        
         self.loadGameName()
         self.loadGameMap()
@@ -165,23 +167,26 @@ class GamesWidget(FormClass, BaseClass):
     def toggle1v1(self, state):
         if not state and self.rankedtype == 1: #if you click on the button while it is already active
             self.Button1v1.setChecked(True)
-        if state and self.rankedtype != 1:
+        if state and self.rankedtype != 1 and self.teamladderwidget == None:
             self.stopSearchRanked()
             self.rankedtype = 1
             self.Button2v2.setChecked(False)
+        if state and self.teamladderwidget != None:
+            self.Button1v1.setChecked(False)
 
     @QtCore.pyqtSlot(bool)
     def toggle2v2(self, state):
         if not state and self.rankedtype == 2:
             self.Button2v2.setChecked(True)
-        if state and self.rankedtype != 2:
+        if state and self.teamladderwidget == None:
             self.stopSearchRanked()
             self.rankedtype = 2
             self.Button1v1.setChecked(False)
-            teamladderwidget = TeamLadderWidget(self)
-            teamladderwidget.exec_()
+            self.teamladderwidget = TeamLadderWidget(self)
+            #self.teamladderwidget.finished.connect(self.ladderWindowClosed)
+            self.teamladderwidget.setModal(False)
+            self.teamladderwidget.show()
             
-        
             
 
     def startSearchRanked(self, race):
