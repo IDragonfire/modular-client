@@ -23,6 +23,7 @@
 from PyQt4 import QtCore, QtGui
 
 from games import logger
+from games.teamsettingswidget import TeamSettingsWidget
 import util
 
 import copy
@@ -33,6 +34,8 @@ FormClass, BaseClass = util.loadUiType("games/ladder2v2.ui")
 class DummyClient(object):
     def send(self,dic):
         logger.info("Widget sent fake message: %s" % str(dic))
+
+    login = {"name": "Johnie102", "rating_mean": 1300, "rating_deviation": 80}
 
 tminfo1 = {"uid": 10, "name": "player1","rating_mean": 1000, "rating_deviation":500, "state":0, "teamname":"TAG"}
 tminfo2 = {"uid": 15, "name": "paulo","rating_mean": 800, "rating_deviation":200, "state":0, "teamname":"Glorious"}
@@ -74,7 +77,8 @@ class TeamLadderWidget(FormClass, BaseClass):
         self.players = {}
         self.selected = [] #list of uid's of selected players
         self.doubleselected = None # the uid of the person that was double clicked
-
+        self.dialog = None
+        
         logger.info("Done with the teamladder dialog stuff")
         #test stuff
         self.processTeammatesInfo(tminfo1)
@@ -121,7 +125,7 @@ class TeamLadderWidget(FormClass, BaseClass):
                 if uid in self.selected:
                     self.players[uid].setSelected(True)
                 if self.doubleselected == uid and self.players[uid].state == 2:
-                    pass #start an actual game.
+                    self.openTeamDialog(self.players[uid])
 
     def createPlayerItem(self, message):
         state = message["state"]
@@ -139,6 +143,12 @@ class TeamLadderWidget(FormClass, BaseClass):
         self.client.send(dict(command="2v2ladder",type="stop"))
         #self.client.TeammatesInfo.disconnect(self.processTeammatesInfo)
         logger.info("Closed search dialog")
+        if self.dialog != None:
+            self.dialog.done(0)
+        self.parent.teamladderwidget = None
+        self.parent.rankedtype = 1
+        self.parent.Button2v2.setChecked(False)
+        self.parent.Button1v1.setChecked(True)
         event.accept()
 
 
@@ -150,10 +160,8 @@ class TeamLadderWidget(FormClass, BaseClass):
         i.e. They will recieve a teammates_info message that reflects the correct status.
         '''
         uid = player.uid
-        if uid in self.selected:
+        if uid in self.selected and uid!=self.doubleselected:
             self.selected.remove(uid)
-            if self.doubleselected == uid:
-                self.doubleselected = None
             player.setSelected(False)
             self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=0))
         else:
@@ -172,12 +180,21 @@ class TeamLadderWidget(FormClass, BaseClass):
             #de-doubleclick the old one
             self.players[self.doubleselected].setSelected(False)
             self.client.send(dict(command="2v2ladder",type="update",uid=self.players[self.doubleselected],state=1))
-            #self.players[self.doubleselected].selected()
-            #doubleclick the new one
-            self.doubleselected = uid
-            player.setSelected(True)
-            self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=2))
-            #player.doubleselected()
+
+        self.doubleselected = uid
+        self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=2))
+        if player.state == 2: # Ready to play a game
+            self.openTeamDialog(player)
+            
+
+    def openTeamDialog(self, teammate):
+        if self.dialog != None:
+            return
+        self.dialog = TeamSettingsWidget(self, teammate)
+        self.dialog.setModal(0)
+        self.dialog.show()
+        self.client.send(dict(command="2v2ladder",type="busy",busy=True))
+        
         
 # This whole thing is adapted from games.gameitem.GameItemDelegate, I don't really know what is going on here...
 class PlayerItemDelegate(QtGui.QStyledItemDelegate):
@@ -238,7 +255,7 @@ class PlayerItem(QtGui.QListWidgetItem):
         self.deviation = None
         self.rating = None
         self.teamname = None
-        self.ready = False
+        self.state = False
 
     def update(self, message, client):
         foo = message
