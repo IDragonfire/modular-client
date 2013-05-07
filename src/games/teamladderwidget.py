@@ -73,7 +73,8 @@ class TeamLadderWidget(FormClass, BaseClass):
         self.PlayerList.itemClicked.connect(self.playerclicked)
         self.PlayerList.itemDoubleClicked.connect(self.playerdoubleclicked)
 
-        self.player = parent.client.players[parent.client.login]
+        self.player = self.parent.client.players[parent.client.login]
+        print self.player
         self.players = {}
         self.selected = [] #list of uid's of selected players
         self.doubleselected = None # the uid of the person that was double clicked
@@ -164,7 +165,7 @@ class TeamLadderWidget(FormClass, BaseClass):
             self.selected.remove(uid)
             player.setSelected(False)
             self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=0))
-        else:
+        elif uid!=self.doubleselected:
             self.selected.append(uid)
             player.setSelected(True)
             self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=1))
@@ -175,13 +176,15 @@ class TeamLadderWidget(FormClass, BaseClass):
         uid = player.uid
         if uid not in self.selected:
             self.selected.append(uid)
-            player.setSelected(True)
         if self.doubleselected != uid and self.doubleselected != None: # a new person was doubleclicked
             #de-doubleclick the old one
-            self.players[self.doubleselected].setSelected(False)
-            self.client.send(dict(command="2v2ladder",type="update",uid=self.players[self.doubleselected],state=1))
+            self.players[self.doubleselected].special = False
+            self.players[self.doubleselected].setSelected(True)
+            self.client.send(dict(command="2v2ladder",type="update",uid=self.doubleselected,state=1))
 
         self.doubleselected = uid
+        player.special = True
+        player.setSelected(True)
         self.client.send(dict(command="2v2ladder",type="update",uid=uid,state=2))
         if player.state == 2: # Ready to play a game
             self.openTeamDialog(player)
@@ -245,6 +248,9 @@ class PlayerItem(QtGui.QListWidgetItem):
     #COLOR_SPECIAL = QtGui.QColor(255,0,102) #Broadwaypink
 
     FORMATTER_TEXT = unicode(util.readfile("games/formatters/player.qthtml"))
+    FORMATTER_TEXT_SELECTED = unicode(util.readfile("games/formatters/playerselected.qthtml"))
+    FORMATTER_DOUBLESELECTED = unicode(util.readfile("games/formatters/playerdoubleselected.qthtml"))
+    TEXT_COLOR = "silver"
 
     def __init__(self, uid, *args, **kwargs):
         QtGui.QListWidgetItem.__init__(self, *args, **kwargs)
@@ -256,6 +262,8 @@ class PlayerItem(QtGui.QListWidgetItem):
         self.rating = None
         self.teamname = None
         self.state = False
+        self.special = False
+        self.formatter = self.FORMATTER_TEXT
 
     def update(self, message, client):
         foo = message
@@ -270,14 +278,10 @@ class PlayerItem(QtGui.QListWidgetItem):
         self.state      = message['state'] # should be an int
 
         self.rating = self.mean - 3*self.deviation
-        if self.state == 0: 
-            readystr = "Searching"
-        elif self.state == 1:
-            readystr = "Interested"
-        elif self.state == 2:
-            readystr = "Ready"
 
-        self.setText(self.FORMATTER_TEXT.format(name = self.name, rating = self.rating, team = self.teamname, ready=readystr))
+        self.updatetext()
+
+        
         '''
         #the next bit is taken from chat.chatter.Chatter.update. This should be probably be put in a helper function
         league = self.client.getUserLeague(self.name)
@@ -299,12 +303,35 @@ class PlayerItem(QtGui.QListWidgetItem):
         '''
         self.setIcon(util.icon("chat/rank/civilian.png"))
 
+    def setSelected(self, state):
+        QtGui.QListWidgetItem.setSelected(self, state)
+        if state: self.formatter = self.FORMATTER_TEXT_SELECTED
+        else: self.formatter = self.FORMATTER_TEXT
+        if self.special: self.formatter = self.FORMATTER_DOUBLESELECTED
+        self.updatetext()
+
+    def updatetext(self):
+        if self.state == 0: 
+            readystr = "Searching"
+        elif self.state == 1:
+            readystr = "Interested"
+        elif self.state == 2:
+            readystr = "Ready"
+        self.setText(self.formatter.format(color=self.TEXT_COLOR, name = self.name, rating = self.rating, team = self.teamname, ready=readystr))
+
+    def __ge__(self, other):
+        return not self.__lt__(self, other)
+
+    def __lt__(self, other):
+        if not self.name: return True
+        if not other.name: return False
+        return self.name.lower() < other.name.lower()
 
 class PlayerItemSearching(PlayerItem):
     pass
 class PlayerItemInterested(PlayerItem):
-    pass
+    TEXT_COLOR = "white"
 class PlayerItemReady(PlayerItem):
-    pass
+    TEXT_COLOR = "yellow"
 
 
