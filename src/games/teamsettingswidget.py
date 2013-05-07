@@ -62,8 +62,9 @@ class TeamSettingsWidget(FormClass, BaseClass):
                          4: util.icon("games/automatch/seraphim.png",pix=True)}
         self.FactionGraphic1.setPixmap(self.graphics[0])
         self.FactionGraphic2.setPixmap(self.graphics[0])
-        player = self.client.login
-        self.TeamInfo.setText(self.FORMATTER_INFO.format(player1=player["name"],
+        player = self.parent.player
+        self.player = player
+        self.TeamInfo.setText(self.FORMATTER_INFO.format(player1=player["login"],
                 player2=self.teammate.name,
                 ratingglobal1=player["rating_mean"] - 3*player["rating_deviation"],
                 ratingglobal2=self.teammate.rating - 3* self.teammate.deviation,
