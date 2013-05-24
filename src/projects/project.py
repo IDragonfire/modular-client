@@ -73,11 +73,13 @@ class Project(QtGui.QListWidgetItem):
         QtGui.QListWidgetItem.__init__(self, *args, **kwargs)    
         
         self.uid = uid
+        self.client  = None
         self.name = None
         self.project3d = None
         self.projectComp = None
         self.selected = False
         
+    
         
     def update(self, message, client):
         '''
@@ -87,11 +89,17 @@ class Project(QtGui.QListWidgetItem):
         self.client  = client
                
         if "selected" in message :
-            self.selected       = message.get('selected', False)           
-            for project in self.client.projects.projects :
-                if project != self.uid : 
-                    self.client.projects.projects[project].selected = False
-            self.client.currentProject = self
+            self.selected       = message.get('selected', False) 
+            if self.selected :          
+                for project in self.client.projects.projects :
+                    if project != self.uid : 
+                        self.client.projects.projects[project].update(dict(selected=False), self.client)
+
+                self.client.currentProject = self
+            color = "silver"
+            if self.selected :
+                color = "yellow"
+            self.setText(self.FORMATTER_PROJECT.format(color = color, name = self.name))
             return
  
         self.name           = message['name']
@@ -108,8 +116,7 @@ class Project(QtGui.QListWidgetItem):
         tooltipstring = ("3d folder : %s<br/>Compo folder : %s " % (self.project3d, self.projectComp))
         self.setToolTip(tooltipstring)
         
-
-        
+       
         
     def __ge__(self, other):
         ''' Comparison operator used for item list sorting '''        

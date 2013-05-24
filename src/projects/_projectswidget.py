@@ -119,7 +119,7 @@ class ProjectWidget(FormClass, BaseClass):
         Slot that interprets and propagates projects_info messages into Projects Items
         '''
         uid = message["uid"]            
-        
+       
         if uid in self.projects: 
             self.projects[uid].update(message, self.client) 
         else :
