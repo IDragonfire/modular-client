@@ -67,9 +67,10 @@ class Step(QtGui.QListWidgetItem):
 
     def updateText(self):
         uid = self.step.uid
-        name = self.client.pipeline.getName(uid)      
+        name = self.client.pipeline.getName(uid)   
+           
         text = str(self.step.index) + ". " + name
-        
+        print name, text
         if len (self.tasks) > 0 :
             text += "\nTasks :\n"
             for uid in self.tasks :
