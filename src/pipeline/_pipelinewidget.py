@@ -34,6 +34,11 @@ colors = {
 9 : "black"
 }
 
+
+   
+
+
+
 class Task(QtCore.QObject):
     def __init__(self, uid, *args, **kwargs):
         QtCore.QObject.__init__(self, *args, **kwargs)
@@ -78,9 +83,9 @@ class Step(QtCore.QObject):
         self.message    = message
         
 
-class PipelineStep(QtCore.QObject):
+class PipelineStep(QtGui.QListWidgetItem):
     def __init__(self, uid, *args, **kwargs):
-        QtCore.QObject.__init__(self, *args, **kwargs)
+        QtGui.QListWidgetItem.__init__(self, *args, **kwargs)
         self.uid        = uid
         self.name       = None
         self.message    = None
@@ -95,12 +100,16 @@ class PipelineStep(QtCore.QObject):
         '''
         self.client     = client
         self.name       = message['name']
+        print "pipestep name ", self.name
         self.moduleUid  = message["moduleuid"]
         self.message    = message
+        
+        self.setText(self.name)
 
 
 class pipeline(QtCore.QObject):
     pipelineStepUpdated     = QtCore.pyqtSignal(PipelineStep)
+    pipelineStepAdded       = QtCore.pyqtSignal(PipelineStep)
     stepUpdated             = QtCore.pyqtSignal(Step)
     taskUpdated             = QtCore.pyqtSignal(Task)
     def __init__(self, client, *args, **kwargs):       
@@ -160,7 +169,7 @@ class pipeline(QtCore.QObject):
                 self.tasks[uid] = Task(uid)
                 self.tasks[uid].update(message, self.client)   
             
-            self.taskUpdated.emit(self.tasks[uid]) 
+            #self.taskUpdated.emit(self.tasks[uid]) 
         else :
             QtGui.QMessageBox.error(self, "Error !", "A step doesn't exists in the project. That shouldn't happen, please report this.")    
     
@@ -178,7 +187,7 @@ class pipeline(QtCore.QObject):
                 self.steps[uid] = Step(uid)
                 self.steps[uid].update(message, self.client)   
             
-            self.stepUpdated.emit(self.steps[uid]) 
+            #self.stepUpdated.emit(self.steps[uid]) 
         else :
             QtGui.QMessageBox.error(self, "Error !", "A step doesn't exists in the project. That shouldn't happen, please report this.")
 
@@ -194,7 +203,7 @@ class pipeline(QtCore.QObject):
             self.pipeline_steps[uid] = PipelineStep(uid)
             self.pipeline_steps[uid].update(message, self.client)
             
-        self.pipelineStepUpdated.emit(self.pipeline_steps[uid])
+        self.pipelineStepAdded.emit(self.pipeline_steps[uid])
 
 
 
