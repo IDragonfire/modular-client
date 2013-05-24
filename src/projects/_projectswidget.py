@@ -24,6 +24,8 @@ from projects.createprojectwidget import CreateProjectWidget
 from projects.project import Project, ProjectItemDelegate
 from projects.step import Step  #, TimelineItemDelegate
 
+from pipeline import projectGraph
+
 FormClass, BaseClass = util.loadUiType("projects/projects.ui")
 
 
@@ -39,6 +41,8 @@ class ProjectWidget(FormClass, BaseClass):
         self.projects = {}      # Projects names known to the client, contains the player_info messages sent by the server
         self.steps    = {}      # Steps for the current projects
         
+        self.pipelineSteps = {}
+        
         self.projectName = None
         self.project3d = None
         self.compositingProject = None
@@ -47,20 +51,36 @@ class ProjectWidget(FormClass, BaseClass):
         self.projectList.itemDoubleClicked.connect(self.projectDoubleClicked)
         
         self.stepsList.itemPressed.connect(self.stepPressed)
-
+        
+        
+        self.projectGraph = projectGraph.ProjectGraph(self)
+        self.scene.setScene(self.projectGraph)
+        self.scene.setAcceptDrops(True)
+        self.scene.setSceneRect(QtCore.QRectF(0, 0, 245, 245))
         
         self.client.projectsUpdated.connect(self.processProjectsInfo)
         self.client.powerUpdated.connect(self.powerUpdate)
-        self.client.pipeline.stepUpdated.connect(self.stepUpdate)
-        self.client.pipeline.taskUpdated.connect(self.taskUpdate)
+#        self.client.pipeline.stepUpdated.connect(self.stepUpdate)
+#        self.client.pipeline.taskUpdated.connect(self.taskUpdate)
 
     def powerUpdate(self):
         if self.client.power >= 16 :
-            self.addStepButton.pressed.connect(self.addPipelineStep)
             self.newProjectButton.pressed.connect(self.newProject)
+            self.client.pipeline.pipelineStepAdded.connect(self.addPipelineStep)
+            
         else :
+            self.stepsList.hide()
+            self.stepLabel.hide()
             self.newProjectButton.setVisible(0)
             self.addStepButton.setVisible(0)        
+
+    def addPipelineStep(self, item):
+        ''' add a pipeline step to the list'''
+        
+        if not item.uid in self.pipelineSteps :
+            self.pipelineSteps[item.uid] = item
+            self.stepsList.addItem(self.pipelineSteps[item.uid])
+
 
     def stepPressed(self, item):
         if QtGui.QApplication.mouseButtons() == QtCore.Qt.RightButton:
@@ -72,14 +92,14 @@ class ProjectWidget(FormClass, BaseClass):
         if uid in self.steps :
             self.steps[uid].addingTask(task)
 
-    def stepUpdate(self, step):
-        uid = step.uid
-        if uid in self.steps : 
-            self.steps[uid].update() 
-        else :
-            self.steps[uid] = Step(step)
-            self.steps[uid].update()           
-            self.stepsList.addItem(self.steps[uid])
+#    def stepUpdate(self, step):
+#        uid = step.uid
+#        if uid in self.steps : 
+#            self.steps[uid].update() 
+#        else :
+#            self.steps[uid] = Step(step)
+#            self.steps[uid].update()           
+#            self.stepsList.addItem(self.steps[uid])
 
     def loggedInSetup(self):
         self.loadProject()
@@ -89,24 +109,24 @@ class ProjectWidget(FormClass, BaseClass):
         self.client.send(dict(command="projects", action="select", uid = item.uid))
         self.client.currentProject = item
         self.saveProject(item.uid)
-        self.stepsList.clear()
+
   
-    def addPipelineStep(self):
-        '''
-        We are adding a new step to the pipeline.
-        Each shot will get these steps by default, but each clip can have an arbitrary number of tasks
-        '''
-        items = []
-        for step in self.client.pipeline.pipeline_steps :
-            items.append(self.client.pipeline.pipeline_steps[step].name)
-            
-        item, ok = QtGui.QInputDialog.getItem(self, "Adding a step to the pipeline",
-                "Step:", items, 0, False)
-        if ok and item:
-            for step in self.client.pipeline.pipeline_steps :
-                if self.client.pipeline.pipeline_steps[step].name == item :
-                    self.client.send(dict(command="pipeline", action="add_step", uid = step, index = self.client.pipeline.getMaxIndex()+1))
-                    return
+#    def addPipelineStep(self):
+#        '''
+#        We are adding a new step to the pipeline.
+#        Each shot will get these steps by default, but each clip can have an arbitrary number of tasks
+#        '''
+#        items = []
+#        for step in self.client.pipeline.pipeline_steps :
+#            items.append(self.client.pipeline.pipeline_steps[step].name)
+#            
+#        item, ok = QtGui.QInputDialog.getItem(self, "Adding a step to the pipeline",
+#                "Step:", items, 0, False)
+#        if ok and item:
+#            for step in self.client.pipeline.pipeline_steps :
+#                if self.client.pipeline.pipeline_steps[step].name == item :
+#                    self.client.send(dict(command="pipeline", action="add_step", uid = step, index = self.client.pipeline.getMaxIndex()+1))
+#                    return
                     
     def newProject(self):
         createprojectwidget = CreateProjectWidget(self)  
