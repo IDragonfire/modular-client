@@ -83,6 +83,12 @@ class UploadModWidget(FormClass, BaseClass):
         #self.modinfo["version"] = int(self.Version.text())
 
         iconpath = modvault.iconPathToFull(self.modinfo.icon)
+        #self.modinfo["name"] = n
+        #self.modinfo["uid"] = self.UID.text()
+        #self.modinfo["description"] = self.Description.toPlainText()
+        #self.modinfo["version"] = int(self.Version.text())
+
+        iconpath = modvault.iconPathToFull(self.modinfo.icon)
         infolder = False
         if iconpath != "" and os.path.commonprefix([os.path.normcase(self.modDir),os.path.normcase(iconpath)]) == os.path.normcase(self.modDir): #the icon is in the game folder
             localpath = modvault.fullPathToIcon(iconpath)
