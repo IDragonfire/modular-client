@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------------
-# Copyright (c) 2012 Gael Honorez.
+# Copyright (c) 2013 Gael Honorez.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the GNU Public License v3.0
 # which accompanies this distribution, and is available at
@@ -16,20 +16,22 @@
 # GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+from PyQt4 import QtCore
+import util.slpp
+import os
+import zipfile
+import StringIO
 
-
-
-
-# Initialize logging system
-import logging
-logger = logging.getLogger("faf.chat")
-logger.setLevel(logging.INFO)
-
-def user2name(user):
-    return (user.split('!')[0]).strip('&@~%+')
-    
-
-from _chatwidget import ChatWidget as Lobby
-
-# CAVEAT: DO NOT REMOVE! These are promoted widgets and py2exe wouldn't include them otherwise
-from chat.chatlineedit import ChatLineEdit
+def writeTable(upgrades, file):
+    ''' write a lua table inside a file '''
+    destination = os.path.join(util.APPDATA_DIR, "gamedata", file)
+    gwFile = QtCore.QFile(destination)
+    gwFile.open(QtCore.QIODevice.WriteOnly)
+    lua = util.slpp.SLPP()
+    s = StringIO.StringIO()  
+    z = zipfile.ZipFile(s, 'w')  
+    z.writestr('lua/gwReinforcementList.lua', str(lua.encodeReinforcements(upgrades))) 
+    z.close()
+    gwFile.write(s.getvalue())
+    gwFile.close()
+    s.close()

@@ -17,7 +17,12 @@
 #-------------------------------------------------------------------------------
 
 
-
+import sip
+sip.setapi('QString', 2)
+sip.setapi('QVariant', 2)
+sip.setapi('QStringList', 2)
+sip.setapi('QList', 2)
+sip.setapi('QProcess', 2)
 
 
 import logging
@@ -110,9 +115,10 @@ __exist_maps = None
 
 def gwmap(mapname):
     folder = folderForMap(mapname)
-    if folder:
-        scenario = getScenarioFile(folder)
+    if folder:       
+        scenario = getScenarioFile(folder)        
         if scenario:
+            
             if not os.path.isdir(os.path.join(getUserMapsFolder(), "gwScenario")):
                 os.makedirs(os.path.join(getUserMapsFolder(), "gwScenario"))                        
             save = os.path.join(getUserMapsFolder(), "gwScenario", "gw_scenario.lua")
@@ -190,9 +196,8 @@ def getScenarioFile(folder):
     ''' 
     Return the scenario.lua file
     '''
-    baseName = os.path.basename(folder).split('.')[0]
     for infile in os.listdir(folder) :
-        if infile.lower() == (baseName.lower() + "_scenario.lua") :
+        if infile.lower().endswith("_scenario.lua") :
             return infile 
     return None
 
@@ -200,9 +205,8 @@ def getSaveFile(folder):
     ''' 
     Return the save.lua file
     '''
-    baseName = os.path.basename(folder).split('.')[0]
     for infile in os.listdir(folder) :
-        if infile.lower() == (baseName.lower() + "_save.lua") :
+        if infile.lower().endswith("_save.lua") :
             return infile 
     return None
 
@@ -307,6 +311,8 @@ def __exportPreviewFromMap(mapname, positions=None):
     '''
     This method auto-upgrades the maps to have small and large preview images
     '''
+    if mapname == "" or mapname == None:
+        return
     smallExists = False
     largeExists = False
     ddsExists = False
@@ -481,7 +487,8 @@ def __downloadPreviewFromWeb(name):
         
     for extension in iconExtensions:
         try:
-            req = urllib2.urlopen(VAULT_PREVIEW_ROOT + urllib2.quote(name) + "." + extension)
+            header = urllib2.Request(VAULT_PREVIEW_ROOT + urllib2.quote(name) + "." + extension, headers={'User-Agent' : "FAF Client"})   
+            req = urllib2.urlopen(header)
             img = os.path.join(util.CACHE_DIR, name + "." + extension)
             with open(img, 'wb') as fp:
                 shutil.copyfileobj(req, fp)
@@ -502,7 +509,7 @@ def __downloadPreviewFromWeb(name):
     logger.debug("Web Preview not found for: " + name)
     return None
      
-def preview(mapname, pixmap = False):
+def preview(mapname, pixmap = False, force=False):
     try:
         # Try to load directly from cache
         for extension in iconExtensions:
@@ -510,18 +517,20 @@ def preview(mapname, pixmap = False):
             if os.path.isfile(img):
                 logger.debug("Using cached preview image for: " + mapname)
                 return util.icon(img, False, pixmap)
-        
+        if force :
         # Try to download from web
-        img = __downloadPreviewFromWeb(mapname)
-        if img and os.path.isfile(img):
-            logger.debug("Using web preview image for: " + mapname)
-            return util.icon(img, False, pixmap)
+            img = __downloadPreviewFromWeb(mapname)
+            if img and os.path.isfile(img):
+                logger.debug("Using web preview image for: " + mapname)
+                return util.icon(img, False, pixmap)
     
         # Try to find in local map folder    
         img = __exportPreviewFromMap(mapname)["cache"]
         if img and os.path.isfile(img):
             logger.debug("Using fresh preview image for: " + mapname)
             return util.icon(img, False, pixmap)
+        
+        return None
     except:
         logger.error("Error raised in maps.preview(...) for " + mapname)
         logger.error("Map Preview Exception", exc_info=sys.exc_info())
@@ -594,7 +603,8 @@ def downloadMap(name):
     #Count the map downloads
     try:
         url = VAULT_COUNTER_ROOT + "?map=" + urllib2.quote(link)
-        urllib2.urlopen(url)
+        req = urllib2.Request(url, headers={'User-Agent' : "FAF Client"})
+        urllib2.urlopen(req)
         logger.debug("Successfully sent download counter request for: " + url)        
         
     except:
@@ -641,4 +651,3 @@ def processMapFolderForUpload(mapDir, positions):
     temp.flush()
     
     return temp
-

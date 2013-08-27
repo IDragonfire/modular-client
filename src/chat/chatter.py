@@ -176,7 +176,10 @@ class Chatter(QtGui.QTableWidgetItem):
         if self.elevation in self.lobby.OPERATOR_COLORS:            
             self.setTextColor(QtGui.QColor(self.lobby.OPERATOR_COLORS[self.elevation]))
         else:
-            self.setTextColor(QtGui.QColor(self.lobby.client.getUserColor(self.name)))
+            if self.name in self.lobby.client.colors :
+                self.setTextColor(QtGui.QColor(self.lobby.client.getColor(self.name)))
+            else :
+                self.setTextColor(QtGui.QColor(self.lobby.client.getUserColor(self.name)))
 
         rating = self.rating
 
@@ -426,9 +429,13 @@ class Chatter(QtGui.QTableWidgetItem):
 
     @QtCore.pyqtSlot()
     def viewVaultReplay(self):
+        ''' see the player replays in the vault '''
+        self.lobby.client.replays.mapName.setText("")
+        self.lobby.client.replays.playerName.setText(self.name)
+        self.lobby.client.replays.minRating.setValue(0)
+        self.lobby.client.replays.searchVault()
         self.lobby.client.mainTabs.setCurrentIndex(8)
-        #self.client.send(dict(command="replay_vault", action="search", rating = self.minRating.value(), map = self.mapName.text(), player = client.instance.urls[self.name], mod = self.modList.currentText()))
-        self.lobby.client.send(dict(command="replay_vault", action="search", player = self.name, map="", rating="0", mod="All"))
+        #self.lobby.client.replays.send(dict(command="search", player = self.name, map="", rating="0", mod="All"))
         
             
 
