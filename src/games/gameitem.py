@@ -274,6 +274,7 @@ class GameItem(QtGui.QListWidgetItem):
             else:            
                 icon = maps.preview(self.mapname)
                 if not icon:
+                    self.client.downloader.downloadMap(self.mapname, self)
                     icon = util.icon("games/unknown_map.png")
                              
             self.setIcon(icon)
@@ -391,7 +392,8 @@ class GameItem(QtGui.QListWidgetItem):
                 modstr = self.mod + " & " + ", ".join(self.mods.values())
             self.setText(self.FORMATTER_MOD.format(color=color, mapslots = self.slots, mapdisplayname=self.mapdisplayname, title=self.title, host=self.host, players=self.numplayers, playerstring=playerstring, gamequality = strQuality, playerincluded = self.playerIncludedTxt, mod=modstr))
         
-        
+        if self.uid == 0:
+            return
                 
         #Spawn announcers: IF we had a gamestate change, show replay and hosting announcements 
         if (oldstate != self.state):            

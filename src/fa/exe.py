@@ -128,7 +128,6 @@ def __run(info, arguments, detach = False):
             QtGui.QMessageBox.warning(None, "ForgedAlliance.exe", "Another instance of FA is already running.")
             return False
 
-
 def replay(source, detach = False):
     '''
     Launches FA streaming the replay from the given location. Source can be a QUrl or a string
@@ -163,6 +162,15 @@ def replay(source, detach = False):
                     
                     parser = replayParser(arg_string)
                     version = parser.getVersion() 
+                    
+                    if mod == "gw":
+                        infoReplayGW = fa.gwreplayinfo.GWReplayInfo(info['uid'])
+                        result = infoReplayGW.run()
+                        if (result != fa.gwreplayinfo.GWReplayInfo.RESULT_SUCCESS):
+                            logger.info("We don't have the info necessary for GW")
+                            return False                  
+
+                        logger.info("Writing GW game table file.")
 
                 elif source.endswith(".scfareplay"):   # compatibility mode
                     filename = os.path.basename(source)
@@ -228,6 +236,12 @@ def replay(source, detach = False):
             logger.error("Can't watch replays without an updated Forged Alliance game!")
             return False        
 
+        if mod == "gw":
+        # in case of GW, we need to alter the scenario for support AIs
+            if not fa.maps.gwmap(info['mapname']):
+                logger.error("You don't have the required map.")
+                return    
+
         # Finally, run executable        
         if __run(None, arguments, detach):
             logger.info("Viewing Replay.")
@@ -238,7 +252,7 @@ def replay(source, detach = False):
             
     
     
-def play(info, port, log = False, arguments = None):
+def play(info, port, log = False, arguments = None, gw = False):
     '''
     Launches FA with all necessary arguments.
     '''
@@ -257,9 +271,13 @@ def play(info, port, log = False, arguments = None):
         arguments.append('"' + util.LOG_FILE_GAME + '"')
     
     #live replay
+    
     arguments.append('/savereplay')
-    arguments.append('gpgnet://'+'localhost'+'/' + str(info['uid']) + "/" + str(info['recorder']) + '.SCFAreplay')
-            
+    if gw == False :
+        arguments.append('gpgnet://'+'localhost'+'/' + str(info['uid']) + "/" + str(info['recorder']) + '.SCFAreplay')
+    else :
+        arguments.append('gpgnet://'+'localhost'+'/' + str(info['uid']) + "/" + str(info['recorder']) + '.GWreplay')
+        
     #disable bug reporter
     arguments.append('/nobugreport')
     #arguments.append('/sse2')

@@ -23,6 +23,8 @@ from galacticWar import logger
 from attackitem import AttackItem
 import time
 
+from galacticWar import FACTIONS
+
 FormClass, BaseClass = util.loadUiType("galacticwar/infopanel.ui")
 
 class InfoPanelWidget(FormClass, BaseClass):
@@ -47,6 +49,7 @@ class InfoPanelWidget(FormClass, BaseClass):
         self.parent.creditsUpdated.connect(self.updateCredit)
         self.parent.rankUpdated.connect(self.updateRank)
         self.parent.victoriesUpdated.connect(self.updateVictories)
+        self.parent.dominationUpdated.connect(self.updateDomination)
         
         
         self.parent.planetClicked.connect(self.planetClicked)
@@ -74,6 +77,7 @@ class InfoPanelWidget(FormClass, BaseClass):
     def setup(self):
         self.attackButton.hide()
         self.defenseButton.hide()
+        self.dominationText.hide()
     
     def buyReinforcementsItems(self):
         '''Handle buying reinforcements items'''
@@ -117,33 +121,28 @@ class InfoPanelWidget(FormClass, BaseClass):
     def updateAttacks(self):
         logger.debug("updating attacks")
         if self.parent.uid in self.parent.attacks :
+            self.attackListWidget.show()
             
-            foundActive = False
+            # clearing stuff
+            for uid in self.myAttacks :
+                self.myAttacks[uid].updateTimer.stop()
+            self.myAttacks = {}
+            self.attackListWidget.clear()
             
             for uid in self.parent.attacks[self.parent.uid] :
-                if self.parent.attacks[self.parent.uid][uid]["onHold"] == False :
-                    foundActive = True
-                    break
+                if self.parent.attacks[self.parent.uid][uid]["onHold"] == True :
+                    continue
                 
-            if foundActive :
-                self.attackListWidget.show()
+                if not uid in self.myAttacks :
+                    self.myAttacks[uid] = AttackItem(uid)
+                    self.attackListWidget.addItem(self.myAttacks[uid])
                 
-                # clearing stuff
-                for uid in self.myAttacks :
-                    self.myAttacks[uid].updateTimer.stop()
-                self.myAttacks = {}
-                self.attackListWidget.clear()
+                self.myAttacks[uid].update(self.parent.attacks[self.parent.uid][uid], self)
                 
-                for uid in self.parent.attacks[self.parent.uid] :
-                    if self.parent.attacks[self.parent.uid][uid]["onHold"] == True :
-                        continue
-                    
-                    if not uid in self.myAttacks :
-                        self.myAttacks[uid] = AttackItem(uid)
-                        self.attackListWidget.addItem(self.myAttacks[uid])
-                    
-                    self.myAttacks[uid].update(self.parent.attacks[self.parent.uid][uid], self)
-                
+            
+            if self.attackListWidget.count() == 0:
+                self.attackListWidget.hide()
+        
         else :
             self.attackListWidget.hide()
             if len(self.myAttacks) != 0 :
@@ -180,6 +179,10 @@ class InfoPanelWidget(FormClass, BaseClass):
         if len(self.attackProposal) == 0 :
             self.attackBox.hide()           
 
+    def updateDomination(self, master):
+        self.dominationText.setText("You are enslaved by %s and you are fighting for them." % FACTIONS[master])
+        self.dominationText.show()
+
     def updateRank(self, rank):
         logger.debug("updating rank interface")
         rankName = self.parent.get_rank(self.parent.faction, rank)
@@ -203,6 +206,9 @@ class InfoPanelWidget(FormClass, BaseClass):
         self.defenseButton.hide()
         
         faction = self.parent.faction
+        if self.parent.enslavedBy != None:
+            faction = self.parent.enslavedBy
+            
         if faction == None :
             self.planet = None
             return
@@ -211,6 +217,11 @@ class InfoPanelWidget(FormClass, BaseClass):
             for planetuid in self.parent.attacks[uid] :
                 if planetId == planetuid :
                     if self.parent.attacks[uid][planetuid]["onHold"] == True :
+                        print self.parent.attacks[uid][planetuid] 
+                        if self.parent.attacks[uid][planetuid]["faction"] == faction :
+                            self.attackButton.show()
+                            self.planet = planetId
+                            return
                         return
                     
                     if self.galaxy.control_points[planetuid].occupation(faction) > 0.5 and self.parent.attacks[uid][planetuid]["faction"] != faction :

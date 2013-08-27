@@ -53,6 +53,8 @@ class LobbyWidget(FormClass, BaseClass):
     ReinforcementUpdated            = QtCore.pyqtSignal(dict)
     planetaryDefenseUpdated         = QtCore.pyqtSignal(dict)
     ReinforcementsGroupUpdated      = QtCore.pyqtSignal(dict)
+    dominationUpdated               = QtCore.pyqtSignal(int)
+    playersListUpdated              = QtCore.pyqtSignal(dict)
 
     def __init__(self, client, *args, **kwargs):
         logger.debug("Lobby instantiating.")
@@ -98,6 +100,7 @@ class LobbyWidget(FormClass, BaseClass):
         self.rank       = None
         self.credits    = 0
         self.victories  = 0
+        self.enslavedBy = None
    
         self.attacks = {}
    
@@ -375,20 +378,15 @@ class LobbyWidget(FormClass, BaseClass):
     def handle_game_upgrades(self, message):
         '''writing reinforcement list'''
         upgrades = message["upgrades"]
-        destination = os.path.join(util.APPDATA_DIR, "gamedata", "gwReinforcementList.gw")
-        gwFile = QtCore.QFile(destination)
-        gwFile.open(QtCore.QIODevice.WriteOnly)
-        lua = util.slpp.SLPP()
-        s = StringIO.StringIO()  
-        z = zipfile.ZipFile(s, 'w')  
-        z.writestr('lua/gwReinforcementList.lua', str(lua.encodeReinforcements(upgrades))) 
-        z.close()
-        gwFile.write(s.getvalue())
-        gwFile.close()
-        s.close()
-    
+        fa.gwgametable.writeTable(upgrades, "gwReinforcementList.gw")
+   
         # and we empty the unit reinforcement list
         self.reinforcementItems.reset()
+    
+    def handle_domination(self, message):
+        master = message["master"]
+        self.enslavedBy = master
+        self.dominationUpdated.emit(master)
     
     def handle_attack_result(self, message):
         self.progress.close()
@@ -479,6 +477,10 @@ class LobbyWidget(FormClass, BaseClass):
                 self.name = name
                 self.send(dict(command = "account_creation", action = 2))
     
+    def handle_faction_player_list(self, message):
+        '''players online'''
+        self.playersListUpdated.emit(message["players"])
+    
     def handle_init_done(self, message):
         if message['status'] == True :
             self.initDone = True
@@ -563,10 +565,10 @@ class LobbyWidget(FormClass, BaseClass):
     @QtCore.pyqtSlot()
     def disconnectedFromServer(self):
         logger.warn("Disconnected from lobby server.")
-
+        
         if self.state == ClientState.ACCEPTED:
             QtGui.QMessageBox.warning(QtGui.QApplication.activeWindow(), "Disconnected from Galactic War", "The lobby lost the connection to the Galactic War server.<br/><b>You might still be able to chat.<br/>To play, try reconnecting a little later!</b>", QtGui.QMessageBox.Close)
-                            
+            self.initDone   = True
             self.client.mainTabs.setCurrentIndex(0)
 
             self.client.mainTabs.setTabEnabled(self.client.mainTabs.indexOf(self.client.galacticwarTab  ), False)
