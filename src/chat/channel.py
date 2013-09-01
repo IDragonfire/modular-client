@@ -40,7 +40,6 @@ class Channel(FormClass, BaseClass):
     This is an actual chat channel object, representing an IRC chat room and the users currently present.
     '''
     def __init__(self, lobby, name, private=False, *args, **kwargs):
-        FormClass.__init__(self, lobby, *args, **kwargs)
         BaseClass.__init__(self, lobby, *args, **kwargs)
 
         self.setupUi(self)
@@ -75,7 +74,12 @@ class Channel(FormClass, BaseClass):
         # Perform special setup for public channels as opposed to private ones
         self.name = name
         self.private = private
-        if not private:
+        
+        self.setup()
+        
+        
+    def setup(self):
+        if not self.private:
             # Non-query channels have a sorted nicklist
             self.nickList.sortItems(Chatter.SORT_COLUMN)
             
@@ -270,12 +274,16 @@ class Channel(FormClass, BaseClass):
         self.chatArea.setTextCursor(cursor)                
         
         if avatar :
-            if not self.chatArea.document().resource(QtGui.QTextDocument.ImageResource, QtCore.QUrl(avatar)):
-                self.chatArea.document().addResource(QtGui.QTextDocument.ImageResource,  QtCore.QUrl(avatar), util.respix(avatar))                        
-            
-            formatter = self.FORMATTER_MESSAGE_AVATAR
-            line = formatter.format(time=self.timestamp(), avatar=avatar, name=name, color=color, width=self.maxChatterWidth, text=util.irc_escape(text, self.lobby.a_style))        
-        
+            pix = util.respix(avatar)
+            if pix:
+                if not self.chatArea.document().resource(QtGui.QTextDocument.ImageResource, QtCore.QUrl(avatar)):
+                    self.chatArea.document().addResource(QtGui.QTextDocument.ImageResource,  QtCore.QUrl(avatar), pix)                        
+                formatter = self.FORMATTER_MESSAGE_AVATAR
+                line = formatter.format(time=self.timestamp(), avatar=avatar, name=name, color=color, width=self.maxChatterWidth, text=util.irc_escape(text, self.lobby.a_style))                 
+            else :
+                formatter = self.FORMATTER_MESSAGE
+                line = formatter.format(time=self.timestamp(), name=name, color=color, width=self.maxChatterWidth, text=util.irc_escape(text, self.lobby.a_style))        
+
         else :
             formatter = self.FORMATTER_MESSAGE
             line = formatter.format(time=self.timestamp(), name=name, color=color, width=self.maxChatterWidth, text=util.irc_escape(text, self.lobby.a_style))        
@@ -290,7 +298,7 @@ class Channel(FormClass, BaseClass):
 
 
     @QtCore.pyqtSlot(str, str)
-    def printAction(self, name, text, scroll_forced=False):        
+    def printAction(self, name, text, scroll_forced=False, server_action=False):        
         '''
         Print an actual message in the chatArea of the channel
         '''
@@ -300,8 +308,10 @@ class Channel(FormClass, BaseClass):
             cursor.movePosition(QtGui.QTextCursor.Down, QtGui.QTextCursor.KeepAnchor, CHAT_REMOVEBLOCK)
             cursor.removeSelectedText()
             self.lines = self.lines - CHAT_REMOVEBLOCK        
-                    
-        if name.lower() in self.lobby.specialUserColors:
+        
+        if server_action :
+            color = self.lobby.client.getColor("server")
+        elif name.lower() in self.lobby.specialUserColors:
             color = self.lobby.specialUserColors[name.lower()]
         else:
             color = self.lobby.client.getUserColor(name)
@@ -327,10 +337,15 @@ class Channel(FormClass, BaseClass):
         self.chatArea.setTextCursor(cursor)
 
         if avatar :
-            if not self.chatArea.document().resource(QtGui.QTextDocument.ImageResource, QtCore.QUrl(avatar)) :
-                self.chatArea.document().addResource(QtGui.QTextDocument.ImageResource,  QtCore.QUrl(avatar), util.respix(avatar))
-            formatter = self.FORMATTER_ACTION_AVATAR
-            line = formatter.format(time=self.timestamp(), avatar=avatar, name=name, color=color, width=self.maxChatterWidth, text=util.irc_escape(text, self.lobby.a_style))
+            pix = util.respix(avatar)
+            if pix:            
+                if not self.chatArea.document().resource(QtGui.QTextDocument.ImageResource, QtCore.QUrl(avatar)) :
+                    self.chatArea.document().addResource(QtGui.QTextDocument.ImageResource,  QtCore.QUrl(avatar), pix)
+                formatter = self.FORMATTER_ACTION_AVATAR
+                line = formatter.format(time=self.timestamp(), avatar=avatar, name=name, color=color, width=self.maxChatterWidth, text=util.irc_escape(text, self.lobby.a_style))
+            else:            
+                formatter = self.FORMATTER_ACTION
+                line = formatter.format(time=self.timestamp(), name=name, color=color, width=self.maxChatterWidth, text=util.irc_escape(text, self.lobby.a_style))
         else:            
             formatter = self.FORMATTER_ACTION
             line = formatter.format(time=self.timestamp(), name=name, color=color, width=self.maxChatterWidth, text=util.irc_escape(text, self.lobby.a_style))
@@ -434,16 +449,18 @@ class Channel(FormClass, BaseClass):
         self.updateUserCount()
         
         if join and self.lobby.client.joinsparts:
-            self.printAction(name, "joined the channel.")
+            self.printAction(name, "joined the channel.", server_action=True)
     
     
     def removeChatter(self, name, action = None):
-        if action and (self.lobby.client.joinsparts or self.private):
-            self.printAction(name, action)
-
         if name in self.chatters:
             self.nickList.removeRow(self.chatters[name].row())        
             del self.chatters[name]
+
+            if action and (self.lobby.client.joinsparts or self.private):
+                self.printAction(name, action, server_action=True)
+                self.stopBlink()
+
 
         self.updateUserCount()
 

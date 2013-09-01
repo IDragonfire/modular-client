@@ -23,6 +23,7 @@
 # Developer mode flag
 import sys
 import os
+import urllib2
 from ctypes import *
 
 def developer():
@@ -45,6 +46,7 @@ else:
     VERSION        = 0
     VERSION_STRING = "development"
 
+UNITS_PREVIEW_ROOT = "http://www.faforever.com/faf/unitsDB/icons/big/" 
 
 #These are paths relative to the executable or main.py script
 COMMON_DIR = "_res"
@@ -58,6 +60,9 @@ THEME_DIR = os.path.join(APPDATA_DIR , "themes")
 #This contains cached data downloaded while communicating with the lobby - at the moment, mostly map preview pngs.
 CACHE_DIR = os.path.join(APPDATA_DIR , "cache")
 
+#This contains cached data downloaded for galactic war.
+GW_TEXTURE_DIR = os.path.join(APPDATA_DIR , "cache", "galacticwar")
+
 #This contains the replays recorded by the local replay server
 REPLAY_DIR = os.path.join(APPDATA_DIR , "replays")
 
@@ -70,6 +75,11 @@ LOG_FILE_REPLAY = os.path.join(LOG_DIR, 'replay.log')
 #This contains the game binaries (old binFAF folder) and the game mods (.faf files)
 BIN_DIR = os.path.join(APPDATA_DIR , "bin")
 GAMEDATA_DIR = os.path.join(APPDATA_DIR , "gamedata")
+
+LOCALFOLDER = os.path.join(os.path.expandvars("%LOCALAPPDATA%"), "Gas Powered Games", "Supreme Commander Forged Alliance")
+if not os.path.exists(LOCALFOLDER):
+    LOCALFOLDER = os.path.join(os.path.expandvars("%USERPROFILE%"), "Local Settings", "Application Data", "Gas Powered Games", "Supreme Commander Forged Alliance")
+PREFSFILENAME = os.path.join(LOCALFOLDER, "game.prefs")
 
 DOWNLOADED_RES_PIX = {}
 DOWNLOADING_RES_PIX = {}
@@ -91,7 +101,6 @@ try:
 except:    
     PERSONAL_DIR = os.path.join(APPDATA_DIR, "user")
 
-
 #Ensure Application data directories exist
 if not os.path.isdir(APPDATA_DIR):
     os.makedirs(APPDATA_DIR)
@@ -110,14 +119,17 @@ if not os.path.isdir(REPLAY_DIR):
     
 if not os.path.isdir(LOG_DIR):
     os.makedirs(LOG_DIR)
-    
+
+if not os.path.isdir(GW_TEXTURE_DIR):
+    os.makedirs(GW_TEXTURE_DIR)    
 
 from PyQt4 import QtGui, uic, QtCore
 import shutil
-import hashlib
+import hashlib, sha
 import re
 import urllib
 import _winreg
+
 
 # Dirty log rotation: Get rid of logs if larger than 1 MiB
 try:
@@ -132,8 +144,6 @@ try:
 except:
     pass        
         
-
-
 # Initialize logging system
 import logging
 import traceback
@@ -153,6 +163,7 @@ def stopLogging():
     logger.debug("Logging ended.")
     logging.shutdown()
      
+
     
 def clearDirectory(directory, confirm = True):
     if (os.path.isdir(directory)):        
@@ -356,7 +367,8 @@ def readstylesheet(filename):
         result = open(os.path.join(__themedir, filename)).read().replace("%THEMEPATH%", __themedir.replace("\\", "/"))
         logger.info(u"Read themed stylesheet: " + filename)
     else:
-        result = open(os.path.join(COMMON_DIR, filename)).read()
+        baseDir = os.path.join(COMMON_DIR, os.path.dirname(filename))
+        result = open(os.path.join(COMMON_DIR, filename)).read().replace("%THEMEPATH%", baseDir.replace("\\", "/"))
         logger.info(u"Read common stylesheet: " + filename)
         
     return result
@@ -396,6 +408,42 @@ def readfile(filename, themed = True):
     result.close()
     return data
 
+def __downloadPreviewFromWeb(unitname):
+    '''
+    Downloads a preview image from the web for the given unit name
+    '''
+    #This is done so generated previews always have a lower case name. This doesn't solve the underlying problem (case folding Windows vs. Unix vs. FAF)
+    unitname = unitname.lower()
+
+    logger.debug("Searching web preview for: " + unitname)
+        
+    url = UNITS_PREVIEW_ROOT + urllib2.quote(unitname)
+    header = urllib2.Request(url, headers={'User-Agent' : "FAF Client"})         
+    req = urllib2.urlopen(header)
+    img = os.path.join(CACHE_DIR, unitname)
+    with open(img, 'wb') as fp:
+        shutil.copyfileobj(req, fp)        
+        fp.flush()
+        os.fsync(fp.fileno())       #probably works fine without the flush and fsync
+        fp.close()
+        return img
+
+        
+    logger.debug("Web Preview not found for: " + unitname)
+    return None
+
+def iconUnit(unitname):
+    # Try to load directly from cache
+
+    img = os.path.join(CACHE_DIR, unitname)
+    if os.path.isfile(img):
+        logger.debug("Using cached preview image for: " + unitname)
+        return icon(img, False)
+    # Try to download from web
+    img = __downloadPreviewFromWeb(unitname)
+    if img and os.path.isfile(img):
+        logger.debug("Using web preview image for: " + unitname)
+        return icon(img, False)
 
 
 def icon(filename, themed=True, pix = False):
@@ -405,7 +453,9 @@ def icon(filename, themed=True, pix = False):
     if pix :
         return pixmap(filename, themed)
     else :
-        return QtGui.QIcon(pixmap(filename, themed))
+        icon = QtGui.QIcon(pixmap(filename, themed))
+        #icon.addPixmap(pixmap(filename, themed)),QtGui.QIcon.Disabled)
+        return  icon
  
     
 def sound(filename, themed = True):
@@ -504,6 +554,10 @@ def irc_escape(text, a_style = ""):
     return " ".join(result)
 
 
+def md5text(text):
+    m = hashlib.md5()
+    m.update(text)
+    return m.hexdigest()
 
 def md5(fileName):
     '''
@@ -539,12 +593,19 @@ def uniqueID(user, session ):
         return None
         
 
+import datetime
+_dateDummy = datetime.datetime(2013,5,27)
 
-
+def strtodate(s):
+    return _dateDummy.strptime(s,"%Y-%m-%d %H:%M:%S")
+def datetostr(d):
+    return str(d)[:-7]
+def now():
+    return _dateDummy.now()
 
 
 
 from crash import CrashDialog
 from report import ReportDialog
 
-        
+    

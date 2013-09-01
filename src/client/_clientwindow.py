@@ -41,6 +41,7 @@ import sys
 import replays
 import time
 import os
+import random
 
 from profile import playerstats
 
@@ -56,6 +57,7 @@ class ClientWindow(FormClass, BaseClass):
     in particular players, games, ranking, etc.
     Its UI also houses all the other UIs for the sub-modules.
     '''
+    
     #These signals are emitted when the client is connected or disconnected from FAF
     connected    = QtCore.pyqtSignal()
     disconnected = QtCore.pyqtSignal()
@@ -78,7 +80,8 @@ class ClientWindow(FormClass, BaseClass):
     tutorialsInfo       = QtCore.pyqtSignal(dict)
     tourneyInfo         = QtCore.pyqtSignal(dict)
     modInfo             = QtCore.pyqtSignal(dict)
-    gameInfo            = QtCore.pyqtSignal(dict)   
+    gameInfo            = QtCore.pyqtSignal(dict)
+    modVaultInfo        = QtCore.pyqtSignal(dict)
     newGame             = QtCore.pyqtSignal(str)
     avatarList          = QtCore.pyqtSignal(list)
     playerAvatarList    = QtCore.pyqtSignal(dict)
@@ -91,13 +94,16 @@ class ClientWindow(FormClass, BaseClass):
     replayVault         = QtCore.pyqtSignal(dict)
     TeammatesInfo       = QtCore.pyqtSignal(dict)
 
+
     #These signals are emitted whenever a certain tab is activated
     showReplays     = QtCore.pyqtSignal()
     showMaps        = QtCore.pyqtSignal()
     showGames       = QtCore.pyqtSignal()
     showTourneys    = QtCore.pyqtSignal()
     showLadder      = QtCore.pyqtSignal()
-    showChat        = QtCore.pyqtSignal()    
+    showChat        = QtCore.pyqtSignal()
+    showGalaxyWar   = QtCore.pyqtSignal()
+    showMods        = QtCore.pyqtSignal()
 
     joinGameFromUser   = QtCore.pyqtSignal(str)
     joinReplayFromUser = QtCore.pyqtSignal(str)
@@ -156,7 +162,7 @@ class ClientWindow(FormClass, BaseClass):
         
         #Local proxy servers
         self.proxyServer = fa.proxies.proxies(self)
-        
+               
         #create user interface (main window) and load theme
         self.setupUi(self)
         self.setStyleSheet(util.readstylesheet("client/client.css"))
@@ -175,20 +181,22 @@ class ClientWindow(FormClass, BaseClass):
         self.foes    = []       # names of the client's foes
                 
         self.power = 0          # current user power        
-               
+        self.email = None
         #Initialize the Menu Bar according to settings etc.
         self.initMenus()
 
         #Load the icons for the tabs
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.whatNewTab  ), util.icon("client/feed.png"))
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.chatTab     ), util.icon("client/chat.png"))
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.gamesTab    ), util.icon("client/games.png"))
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.mapsTab     ), util.icon("client/maps.png"))
-        
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.ladderTab   ), util.icon("client/ladder.png"))
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.tourneyTab  ), util.icon("client/tourney.png"))
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.replaysTab  ), util.icon("client/replays.png"))
-        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.tutorialsTab), util.icon("client/tutorials.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.whatNewTab      ), util.icon("client/feed.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.chatTab         ), util.icon("client/chat.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.gamesTab        ), util.icon("client/games.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.mapsTab         ), util.icon("client/maps.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.modsTab         ), util.icon("client/mods.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.galacticwarTab  ), util.icon("client/gw.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.ladderTab       ), util.icon("client/ladder.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.tourneyTab      ), util.icon("client/tourney.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.livestreamTab   ), util.icon("client/twitch.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.replaysTab      ), util.icon("client/replays.png"))
+        self.mainTabs.setTabIcon(self.mainTabs.indexOf(self.tutorialsTab    ), util.icon("client/tutorials.png"))
         
         QtWebKit.QWebSettings.globalSettings().setAttribute(QtWebKit.QWebSettings.PluginsEnabled, True)
         
@@ -206,23 +214,30 @@ class ClientWindow(FormClass, BaseClass):
         import games
         import tutorials
         import featuredmods
+        import galacticWar
+        import downloadManager
+        import modvault
         from chat._avatarWidget import avatarWidget
         
-        
+        #download manager
+        self.downloader = downloadManager.downloadManager(self)
+
         # Initialize chat
         self.chat = chat.Lobby(self)
     
         #build main window with the now active client                  
-        self.ladder = stats.Stats(self)
-        self.games = games.Games(self)
-        self.tourneys = tourneys.Tourneys(self)
-        self.vault = vault.MapVault(self)
-        self.replays = replays.Replays(self)
-        self.tutorials = tutorials.Tutorials(self)
+        self.ladder         = stats.Stats(self)
+        self.games          = games.Games(self)
+        self.tourneys       = tourneys.Tourneys(self)
+        self.vault          = vault.MapVault(self)
+        self.modvault       = modvault.ModVault(self)
+        self.replays        = replays.Replays(self)
+        self.tutorials      = tutorials.Tutorials(self)
+        self.GalacticWar    = galacticWar.Lobby(self)
         
         # Other windows
-        self.featuredMods = featuredmods.FeaturedMods(self)
-        self.avatarAdmin  = self.avatarSelection = avatarWidget(self, None)
+        self.featuredMods   = featuredmods.FeaturedMods(self)
+        self.avatarAdmin    = self.avatarSelection = avatarWidget(self, None)
 
 
 
@@ -339,8 +354,10 @@ class ClientWindow(FormClass, BaseClass):
         self.actionSetSoundEffects.triggered.connect(self.updateOptions)
         self.actionSetOpenGames.triggered.connect(self.updateOptions)
         self.actionSetJoinsParts.triggered.connect(self.updateOptions)
+        self.actionSetAutoPostJoin.triggered.connect(self.updateOptions)
         self.actionSetLiveReplays.triggered.connect(self.updateOptions)
         self.actionSaveGamelogs.triggered.connect(self.updateOptions)
+        self.actionColoredNicknames.triggered.connect(self.updateOptions)
         self.actionActivateMumbleSwitching.triggered.connect(self.saveMumbleSwitching)
         
         
@@ -367,8 +384,10 @@ class ClientWindow(FormClass, BaseClass):
         self.soundeffects = self.actionSetSoundEffects.isChecked()
         self.opengames = self.actionSetOpenGames.isChecked()
         self.joinsparts = self.actionSetJoinsParts.isChecked()
+        self.autopostjoin = self.actionSetAutoPostJoin.isChecked()
         self.livereplays = self.actionSetLiveReplays.isChecked()
         self.gamelogs = self.actionSaveGamelogs.isChecked()
+        self.coloredNicknames = self.actionColoredNicknames.isChecked()
                  
         self.saveChat()
         self.saveCredentials()
@@ -519,6 +538,8 @@ class ClientWindow(FormClass, BaseClass):
         util.settings.setValue("livereplays", self.livereplays)
         util.settings.setValue("opengames", self.opengames)
         util.settings.setValue("joinsparts", self.joinsparts)
+        util.settings.setValue("autopostjoin", self.autopostjoin)
+        util.settings.setValue("coloredNicknames", self.coloredNicknames)
         util.settings.endGroup()
         
     
@@ -581,12 +602,16 @@ class ClientWindow(FormClass, BaseClass):
             self.opengames = (util.settings.value("opengames", "true") == "true")
             self.joinsparts = (util.settings.value("joinsparts", "false") == "true")
             self.livereplays = (util.settings.value("livereplays", "true") == "true")
+            self.autopostjoin = (util.settings.value("autopostjoin", "true") == "true")
+            self.coloredNicknames = (util.settings.value("coloredNicknames", "false") == "true")
+            
             util.settings.endGroup()
-
+            self.actionColoredNicknames.setChecked(self.coloredNicknames)
             self.actionSetSoundEffects.setChecked(self.soundeffects)
             self.actionSetLiveReplays.setChecked(self.livereplays)
             self.actionSetOpenGames.setChecked(self.opengames)
             self.actionSetJoinsParts.setChecked(self.joinsparts)
+            self.actionSetAutoPostJoin.setChecked(self.autopostjoin)
         except:
             pass
 
@@ -781,6 +806,10 @@ class ClientWindow(FormClass, BaseClass):
            
             # update what's new page
             self.whatNewsView.setUrl(QtCore.QUrl("http://www.faforever.com/?page_id=114&username={user}&pwdhash={pwdhash}".format(user=self.login, pwdhash=self.password))) 
+            
+            # live streams
+            self.LivestreamWebView.setUrl(QtCore.QUrl("http://www.faforever.com/?page_id=974"))
+            
             # update tournament
             self.tourneys.updateTournaments()
             
@@ -851,6 +880,7 @@ class ClientWindow(FormClass, BaseClass):
     #Color table used by the following method
     # CAVEAT: This will break if the theme is loaded after the client package is imported
     colors = json.loads(util.readfile("client/colors.json"))
+    randomcolors = json.loads(util.readfile("client/randomcolors.json"))
 
     def getUserLeague(self, name):
         '''
@@ -895,10 +925,21 @@ class ClientWindow(FormClass, BaseClass):
         elif name in self.foes:
             return self.getColor("foe")
         elif name in self.players:
-            return self.getColor("player")
+            if self.coloredNicknames:
+                return self.getRandomColor(name)
+            else:
+                return self.getColor("player")
         else:
-            return self.getColor("default")
+            if self.coloredNicknames:
+                return self.getRandomColor(name)
+            else:
+                return self.getColor("default")
 
+
+    def getRandomColor(self, name):
+        '''Generate a random color from a name'''
+        random.seed(name)
+        return random.choice(self.randomcolors)
 
     def getColor(self, name):
         if name in self.colors:
@@ -906,8 +947,8 @@ class ClientWindow(FormClass, BaseClass):
         else:
             return self.colors["default"]
 
-    
-    
+
+
     def getUserRanking(self, name):
         '''
         Returns a user's ranking (trueskill rating) as a float.
@@ -926,6 +967,7 @@ class ClientWindow(FormClass, BaseClass):
         It will notify other modules through the signal gameEnter().
         '''
         logger.info("FA has launched in an attached process.")
+        self.send(dict(command="fa_state", state="on"))
         self.gameEnter.emit()
 
 
@@ -939,8 +981,7 @@ class ClientWindow(FormClass, BaseClass):
             logger.info("FA has finished with exit code: " + str(exit_code))
         else:
             logger.warn("FA has finished with exit code: " + str(exit_code))
-        
-        self.writeToServer("FA_CLOSED")
+        self.send(dict(command="fa_state", state="off"))
         self.gameExit.emit()
 
         
@@ -972,13 +1013,25 @@ class ClientWindow(FormClass, BaseClass):
         if new_tab is self.tourneyTab:
             self.showTourneys.emit()
 
+        if new_tab is self.galacticwarTab:
+            self.showGalaxyWar.emit()
+
+        if new_tab is self.modsTab:
+            self.showMods.emit()            
+
     def joinGameFromURL(self, url):
         '''
         Tries to join the game at the given URL
         '''
         logger.debug("joinGameFromURL: " + url.toString())
         if (fa.exe.available()):
-            if fa.exe.check(url.queryItemValue("mod"), url.queryItemValue("map")):
+            add_mods = []
+            try:
+                modstr = url.queryItemValue("mods")
+                add_mods = json.loads(modstr) # should be a list
+            except:
+                logger.info("Couldn't load urlquery value 'mods'")
+            if fa.exe.check(url.queryItemValue("mod"), url.queryItemValue("map"), sim_mods = add_mods):            
                 self.send(dict(command="game_join", uid=int(url.queryItemValue("uid")), gameport=self.gamePort))
     
 
@@ -1241,7 +1294,10 @@ class ClientWindow(FormClass, BaseClass):
     #
     def send(self, message):
         data = json.dumps(message)
-        logger.info("Outgoing JSON Message: " + data)
+        if message["command"] == "hello" :
+            logger.info("Outgoing JSON Message: login." )
+        else :
+            logger.info("Outgoing JSON Message: " + data)
         self.writeToServer(data)
         
         
@@ -1271,11 +1327,10 @@ class ClientWindow(FormClass, BaseClass):
         self.statsInfo.emit(message)       
 
     def handle_welcome(self, message):
-        
         if "session" in message :
             self.session = str(message["session"])
         
-        if "update" in message : 
+        elif "update" in message : 
             
             # fix a problem with Qt.
             util.settings.beginGroup("window")
@@ -1294,6 +1349,7 @@ class ClientWindow(FormClass, BaseClass):
                 self.state = ClientState.ACCEPTED
                 
         else :
+            self.email = message["email"]
             logger.debug("Login success" )
             self.state = ClientState.ACCEPTED
             
@@ -1305,15 +1361,33 @@ class ClientWindow(FormClass, BaseClass):
             arguments = message['args']
         else:
             arguments = []
+        
             
+        
         # Important: This is the race parameter used by ladder search.
         if 'mod' in message:
             modkey = 'mod'
         else:
             modkey = 'featured_mod'
+
+        # Do some special things depending of the reason of the game launch.
+        rank = False
+        galacticWar = False
+        
+        if 'reason' in message:
+            if message['reason'] == 'gw' :
+                rank = True
+                galacticWar = True
+                if (not fa.exe.check(message[modkey])):
+                    logger.error("Can't play %s without successfully updating Forged Alliance." % message[modkey])
+                    return  
             
         # HACK: Ideally, this comes from the server, too. LATER: search_ranked message
-        if message[modkey] == "ladder1v1":
+        if rank :
+            arguments.append('/rank')
+            arguments.append(str(self.GalacticWar.rank))
+            
+        elif message[modkey] == "ladder1v1":
             arguments.append(self.games.race)
             #Player 1v1 rating
             arguments.append('/mean')
@@ -1334,10 +1408,22 @@ class ClientWindow(FormClass, BaseClass):
             arguments.append(str(self.players[self.login]["rating_mean"]))    
             arguments.append('/deviation')        
             arguments.append(str(self.players[self.login]["rating_deviation"]))            
-        
+            arguments.append('/country ') #Add country command line argument - Vicarian
+            country = self.getUserCountry(self.login) #Add country command line argument - Vicarian
+            arguments.append(str(country)) #Add country command line argument - Vicarian
+            
         # Ensure we have the map
         if "mapname" in message:
             fa.exe.checkMap(message['mapname'], True)
+            if galacticWar:
+                # in case of GW, we need to alter the scenario for support AIs
+                if not fa.maps.gwmap(message['mapname']):
+                    logger.error("You don't have the required map.")
+                    return                      
+
+        if "sim_mods" in message:
+            fa.exe.checkMods(message['sim_mods'])                
+                
 
         # Writing a file for options
         if "options" in message:
@@ -1378,7 +1464,7 @@ class ClientWindow(FormClass, BaseClass):
         info = dict(uid = message['uid'], recorder = self.login, featured_mod = message[modkey], game_time=time.time(), version_info=version_info)
         
         
-        fa.exe.play(info, self.relayServer.serverPort(), self.gamelogs, arguments)
+        fa.exe.play(info, self.relayServer.serverPort(), self.gamelogs, arguments, galacticWar)
 
       
 
@@ -1399,6 +1485,9 @@ class ClientWindow(FormClass, BaseClass):
 
     def handle_teammates_info(self, message):
         self.TeammatesInfo.emit(message) 
+
+    def handle_modvault_info(self, message):
+        self.modVaultInfo.emit(message)
     
     def handle_replay_vault(self, message):
         self.replayVault.emit(message)
@@ -1412,7 +1501,6 @@ class ClientWindow(FormClass, BaseClass):
             self.avatarList.emit(message["avatarlist"])
             
         elif "player_avatar_list" in message :
-            print "emitting signal"
             self.playerAvatarList.emit(message)
     
     def handle_social(self, message):
