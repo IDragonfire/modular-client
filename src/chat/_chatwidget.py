@@ -25,6 +25,7 @@ from PyQt4.QtNetwork import QNetworkAccessManager, QNetworkRequest
 
 from chat.irclib import SimpleIRCClient
 import util
+import fa
 
 import sys
 from chat import logger, user2name
@@ -49,6 +50,7 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
 
         self.setupUi(self)
         
+        
         # CAVEAT: These will fail if loaded before theming is loaded
         import json
         self.OPERATOR_COLORS = json.loads(util.readfile("chat/formatters/operator_colors.json"))
@@ -60,6 +62,8 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
         self.nam = QNetworkAccessManager()
         self.nam.finished.connect(self.finishDownloadAvatar)
                     
+        #nickserv stuff
+        self.identified = False
         
         #IRC parameters
         self.ircServer = IRC_SERVER
@@ -80,6 +84,11 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
         #add self to client's window
         self.client.chatTab.layout().addWidget(self)        
         self.tabCloseRequested.connect(self.closeChannel)
+
+        #add signal handler for game exit
+        self.client.gameExit.connect(self.processGameExit)
+        self.replayInfo = fa.exe.instance.info
+        
 
         #Hook with client's connection and autojoin mechanisms
         self.client.connected.connect(self.connect)
@@ -131,7 +140,12 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
                 if player in self.channels[channel].chatters :
                     self.channels[channel].chatters[player].avatarItem.setIcon(QtGui.QIcon(util.respix(reply.url().toString())))
                     self.channels[channel].chatters[player].avatarItem.setToolTip(self.channels[channel].chatters[player].avatarTip)
-           
+            
+            if self.client.GalacticWar.channel != None :
+                if player in self.client.GalacticWar.channel.chatters :
+                    self.client.GalacticWar.channel.chatters[player].avatarItem.setIcon(QtGui.QIcon(util.respix(reply.url().toString())))
+                    self.client.GalacticWar.channel.chatters[player].avatarItem.setToolTip(self.client.GalacticWar.channel.chatters[player].avatarTip)
+            
                    
     def closeChannel(self, index):
         '''
@@ -216,25 +230,54 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
                 else:
                     #Note down channels for later.
                     self.optionalChannels.append(channel)
-       
-       
+
+    def processGameExit(self):
+        self.autopostjoin = util.settings.value("chat/autopostjoin")
+        logger.info("autopostjoin: " + str(self.autopostjoin))
+        if (str(self.autopostjoin) == "true"):
+            self.replayInfo = fa.exe.instance.info
+            if self.replayInfo:
+                if 'num_players' in self.replayInfo:
+                    self.nrofplayers = int(self.replayInfo['num_players'])
+                    logger.info("nr of players: " + str(self.nrofplayers))
+                    if (self.nrofplayers > 1):
+                        postGameChannel = "#game-" + str(self.replayInfo['uid'])
+                        if (self.connection.is_connected()):
+                            logger.info("Joining post-game channel.")
+                            self.connection.join(postGameChannel)
+        
+        
+        
 #SimpleIRCClient Class Dispatcher Attributes follow here.
     def on_welcome(self, c, e):
-				
         self.serverLogArea.appendPlainText("[%s: %s->%s]" % (e.eventtype(), e.source(), e.target()) + "\n".join(e.arguments()))
         self.welcomed = True
+        
+        
+    def nickservIdentify(self):
+        if self.identified == False :
+            self.serverLogArea.appendPlainText("[Identify as : %s]" % (self.client.login))
+            self.connection.privmsg('NickServ', 'identify %s %s' % (self.client.login, util.md5text(self.client.password)))
+    
+    def on_authentified(self):
+        if self.connection.get_nickname() != self.client.login :
+            self.serverLogArea.appendPlainText("[Retrieving our nickname : %s]" % (self.client.login))
+            self.connection.privmsg('nickserv', 'recover %s %s' % (self.client.login, util.md5text(self.client.password)))
         #Perform any pending autojoins (client may have emitted autoJoin signals before we talked to the IRC server)
-       	self.autoJoin(self.optionalChannels)
+        self.autoJoin(self.optionalChannels)
         self.autoJoin(self.crucialChannels)
+    
+    def nickservRegister(self):
+        self.connection.privmsg('NickServ', 'register %s %s' % (util.md5text(self.client.password), self.client.email))
         
         
     def on_version(self, c, e):
-        self.irc.privmsg(e.source(), "Forged Alliance Forever " + self.client.VERSION)
+        self.connection.privmsg(e.source(), "Forged Alliance Forever " + self.client.VERSION)
       
       
     def on_motd(self, c, e):   
         self.serverLogArea.appendPlainText("[%s: %s->%s]" % (e.eventtype(), e.source(), e.target()) + "\n".join(e.arguments()))
-   
+        self.nickservIdentify()
    
     def on_endofmotd(self, c, e):   
         self.serverLogArea.appendPlainText("[%s: %s->%s]" % (e.eventtype(), e.source(), e.target()) + "\n".join(e.arguments()))
@@ -247,6 +290,11 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
 
         for user in listing:
             self.channels[channel].addChatter(user)
+            
+        
+            if self.client.GalacticWar.channel and channel == self.client.GalacticWar.channel.name :
+                self.client.GalacticWar.channel.addChatter(user)
+                
             QtGui.QApplication.processEvents()      #Added by thygrrr to improve application responsiveness on large IRC packets
         
         logger.debug("Added " + str(len(listing)) + " Chatters")
@@ -272,6 +320,12 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
                 self.channels[channel].printAnnouncement("", "black", "+1")
                 
             else:
+                if channel.lower() == "#uef" or channel.lower() == "#aeon" or channel.lower() == "#cybran" or channel.lower() == "#seraphim" :
+                    self.client.GalacticWar.createChannel(self, channel)
+                    self.client.GalacticWar.network_Chat.layout().addWidget(self.client.GalacticWar.channel) 
+                    self.client.GalacticWar.channel.addChatter(user2name(e.source()), True)
+                    self.client.GalacticWar.channel.resizing()
+
                 self.addTab(self.channels[channel], channel)
             
             
@@ -282,7 +336,9 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
         self.channels[channel].addChatter(user2name(e.source()), True)
         self.channels[channel].resizing()
         
-        
+    
+  
+    
     def on_part(self, c, e):
         channel = e.target()
         name = user2name(e.source())
@@ -335,13 +391,37 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
         
         if target in self.channels:
             self.channels[target].printMsg(user2name(e.source()), "\n".join(e.arguments()))
-            
-                
-    def on_privnotice(self, c, e):
+        if self.client.GalacticWar.channel and target == self.client.GalacticWar.channel.name :
+            self.client.GalacticWar.channel.printMsg(user2name(e.source()), "\n".join(e.arguments()))
+                        
+    def on_privnotice(self, c, e):                            
         source = user2name(e.source())
         notice = e.arguments()[0]
         prefix = notice.split(" ")[0]
         target = prefix.strip("[]")
+        
+        if source and source.lower() == 'nickserv':
+            
+            if e.arguments()[0].find("registered under your account") >= 0:
+                if self.identified == False :
+                    self.identified = True
+                    self.on_authentified()
+                
+            elif e.arguments()[0].find("isn't registered") >= 0:
+                
+                self.nickservRegister()
+        
+            elif e.arguments()[0].find("Password accepted") :
+                if self.identified == False :
+                    self.identified = True
+                    self.on_authentified()
+                        
+            elif e.arguments()[0].find("RELEASE") >= 0:
+                self.connection.privmsg('nickserv', 'release %s %s' % (self.client.login, util.md5text(self.client.password)))
+
+            elif e.arguments()[0].find("hold on") >= 0:
+                self.connection.nick(self.client.login)
+
         message = "\n".join(e.arguments()).lstrip(prefix)
         if target in self.channels:
             self.channels[target].printMsg(source, message)     
@@ -371,7 +451,8 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
         else:
             self.channels[target].printAction(name, "\n".join(e.arguments()))
         
-    def on_default(self, c, e):                        
+    def on_default(self, c, e):                     
         self.serverLogArea.appendPlainText("[%s: %s->%s]" % (e.eventtype(), e.source(), e.target()) + "\n".join(e.arguments()))
-
+        if "Nickname is already in use." in "\n".join(e.arguments()) :
+            self.connection.nick(self.client.login + "_")
 

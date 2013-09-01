@@ -114,6 +114,7 @@ class GameItem(QtGui.QListWidgetItem):
         self.teams          = None
         self.access         = None
         self.mod            = None
+        self.mods           = None
         self.moddisplayname = None
         self.state          = None
         self.nTeams         = 0
@@ -207,16 +208,17 @@ class GameItem(QtGui.QListWidgetItem):
         self.teams      = dict.copy(message['teams'])
         self.access     = message.get('access', 'public')
         self.mod        = message['featured_mod']
+        self.modVersion = message.get('featured_mod_versions', [])
+        self.mods       = message.get('sim_mods',{})
         self.options    = message.get('options', [])
         self.numplayers = message.get('num_players', 0) 
         self.slots      = message.get('max_players',12)
         
         oldstate = self.state
         self.state  = message['state']
- 
-        
+      
 
-        # Assemble a players & teams lists       
+        # Assemble a players & teams lists
         self.teamlist = []
         self.observerlist = []
         self.realPlayers = []
@@ -272,6 +274,7 @@ class GameItem(QtGui.QListWidgetItem):
             else:            
                 icon = maps.preview(self.mapname)
                 if not icon:
+                    self.client.downloader.downloadMap(self.mapname, self)
                     icon = util.icon("games/unknown_map.png")
                              
             self.setIcon(icon)
@@ -285,7 +288,7 @@ class GameItem(QtGui.QListWidgetItem):
         
         
         if self.state == "open" :
-            if "1" in self.teams and "2" in self.teams and self.client.login != None :
+            if "1" in self.teams and "2" in self.teams and self.client.login != None and self.client.login not in self.teams["1"] and self.client.login not in self.teams["2"] :
                 if len(self.teams["1"]) < len(self.teams["2"]) :
                     self.teams["1"].append(self.client.login)
                     self.playerIncluded = True
@@ -380,17 +383,24 @@ class GameItem(QtGui.QListWidgetItem):
         
         
 
-        if self.mod == "faf":
+        if self.mod == "faf" and not self.mods:
             self.setText(self.FORMATTER_FAF.format(color=color, mapslots = self.slots, mapdisplayname=self.mapdisplayname, title=self.title, host=self.host, players=self.numplayers, playerstring=playerstring, gamequality = strQuality, playerincluded = self.playerIncludedTxt))
         else:
-            self.setText(self.FORMATTER_MOD.format(color=color, mapslots = self.slots, mapdisplayname=self.mapdisplayname, title=self.title, host=self.host, players=self.numplayers, playerstring=playerstring, gamequality = strQuality, playerincluded = self.playerIncludedTxt, mod=self.mod))
+            if not self.mods:
+                modstr = self.mod
+            else:
+                if self.mod == 'faf': modstr = ", ".join(self.mods.values())
+                else: modstr = self.mod + " & " + ", ".join(self.mods.values())
+                if len(modstr) > 20: modstr = modstr[:15] + "..."
+            self.setText(self.FORMATTER_MOD.format(color=color, mapslots = self.slots, mapdisplayname=self.mapdisplayname, title=self.title, host=self.host, players=self.numplayers, playerstring=playerstring, gamequality = strQuality, playerincluded = self.playerIncludedTxt, mod=modstr))
         
-        
+        if self.uid == 0:
+            return
                 
         #Spawn announcers: IF we had a gamestate change, show replay and hosting announcements 
         if (oldstate != self.state):            
             if (self.state == "playing"):
-                QtCore.QTimer.singleShot(60000, self.announceReplay) #The delay is there because we have a 60 delay in the livereplay server
+                QtCore.QTimer.singleShot(5*60000, self.announceReplay) #The delay is there because we have a 5 minutes delay in the livereplay server
             elif (self.state == "open"):
                 QtCore.QTimer.singleShot(35000, self.announceHosting)   #The delay is there because we currently the host needs time to choose a map
 
@@ -491,6 +501,8 @@ class GameItem(QtGui.QListWidgetItem):
                     mods += ": On<br/>"
                 else :
                     mods += ": Off<br/>"
+
+        if self.mods: mods += "<br/><br/>With " + "<br/>".join(self.mods.values())
 
         self.setToolTip(self.FORMATTER_TOOL.format(teams = teams, observers=observers, mods = mods)) 
 
@@ -625,8 +637,8 @@ class GameItem(QtGui.QListWidgetItem):
         if (not self.private and other.private): return True;
         if (self.private and not other.private): return False;
         
-        # Default: Alphabetical
-        return self.title.lower() < other.title.lower()
+        # Default: by UID.
+        return self.uid < other.uid
     
 
 

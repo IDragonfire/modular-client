@@ -96,6 +96,11 @@
         </property>
         <item row="0" column="0">
          <widget class="QWebView" name="whatNewsView">
+          <property name="url">
+           <url>
+            <string>about:blank</string>
+           </url>
+          </property>
          </widget>
         </item>
        </layout>
@@ -115,6 +120,16 @@
         <string>Find Games</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_7">
+        <property name="margin">
+         <number>6</number>
+        </property>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="galacticwarTab">
+       <attribute name="title">
+        <string>Galactic War</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_8">
         <property name="margin">
          <number>6</number>
         </property>
@@ -150,6 +165,25 @@
         </property>
        </layout>
       </widget>
+      <widget class="QWidget" name="livestreamTab">
+       <attribute name="title">
+        <string>Livestreams</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_10">
+        <property name="margin">
+         <number>0</number>
+        </property>
+        <item row="0" column="0">
+         <widget class="QWebView" name="LivestreamWebView">
+          <property name="url">
+           <url>
+            <string>about:blank</string>
+           </url>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
       <widget class="QWidget" name="replaysTab">
        <attribute name="title">
         <string>Replays</string>
@@ -165,6 +199,16 @@
         <string>Map Vault</string>
        </attribute>
        <layout class="QGridLayout" name="gridLayout_9">
+        <property name="margin">
+         <number>6</number>
+        </property>
+       </layout>
+      </widget>
+	  <widget class="QWidget" name="modsTab">
+       <attribute name="title">
+        <string>Mod Vault</string>
+       </attribute>
+       <layout class="QGridLayout" name="gridLayout_3">
         <property name="margin">
          <number>6</number>
         </property>
@@ -196,6 +240,8 @@
      <addaction name="actionSetGamePath"/>
      <addaction name="actionSetGamePort"/>
      <addaction name="actionSaveGamelogs"/>
+     <addaction name="separator"/>
+     <addaction name="actionGalacticWar"/>
     </widget>
     <widget class="QMenu" name="menuTheme">
      <property name="title">
@@ -224,10 +270,12 @@
      </property>
      <addaction name="actionClearWindow"/>
      <addaction name="separator"/>
+     <addaction name="actionColoredNicknames"/>
      <addaction name="actionSetJoinsParts"/>
      <addaction name="actionSetOpenGames"/>
      <addaction name="actionSetLiveReplays"/>
      <addaction name="actionSetSoundEffects"/>
+     <addaction name="actionSetAutoPostJoin"/>
     </widget>
     <addaction name="menuSettings"/>
     <addaction name="menuChat"/>
@@ -442,9 +490,38 @@
     <string>Clear Window</string>
    </property>
   </action>
+  <action name="actionColoredNicknames">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Colored nicknames</string>
+   </property>
+   </action>  
   <action name="actionWiki">
    <property name="text">
     <string>Wiki</string>
+   </property>
+  </action>
+  <action name="actionSetAutoPostJoin">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Autojoin Post-game chat</string>
+   </property>
+  </action>
+  <action name="actionGalactic_War">
+   <property name="text">
+    <string>Galactic War...</string>
+   </property>
+  </action>
+  <action name="actionGalacticWar">
+   <property name="enabled">
+    <bool>false</bool>
+   </property>
+   <property name="text">
+    <string>Galactic War...</string>
    </property>
   </action>
  </widget>

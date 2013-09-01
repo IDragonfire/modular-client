@@ -62,6 +62,9 @@ class Chatter(QtGui.QTableWidgetItem):
         self.country = None
         self.league = None
         
+        self.setup()
+    
+    def setup(self):
         self.setText(self.name)
         self.setFlags(QtCore.Qt.ItemIsEnabled)        
         self.setTextAlignment(QtCore.Qt.AlignLeft)
@@ -90,6 +93,8 @@ class Chatter(QtGui.QTableWidgetItem):
 
         self.update()        
 
+
+    
 
     def setVisible(self, visible):        
         if visible:
@@ -171,19 +176,23 @@ class Chatter(QtGui.QTableWidgetItem):
         if self.elevation in self.lobby.OPERATOR_COLORS:            
             self.setTextColor(QtGui.QColor(self.lobby.OPERATOR_COLORS[self.elevation]))
         else:
-            self.setTextColor(QtGui.QColor(self.lobby.client.getUserColor(self.name)))
+            if self.name in self.lobby.client.colors :
+                self.setTextColor(QtGui.QColor(self.lobby.client.getColor(self.name)))
+            else :
+                self.setTextColor(QtGui.QColor(self.lobby.client.getUserColor(self.name)))
 
         rating = self.rating
 
         # Status icon handling
         if self.name in client.instance.urls:
             url = client.instance.urls[self.name]
-            if url.scheme() == "fafgame":
-                self.statusItem.setIcon(util.icon("chat/status/lobby.png"))
-                self.statusItem.setToolTip("In Game Lobby<br/>"+url.toString())
-            elif url.scheme() == "faflive":
-                self.statusItem.setIcon(util.icon("chat/status/playing.png"))
-                self.statusItem.setToolTip("Playing Game<br/>"+url.toString())
+            if url:
+                if url.scheme() == "fafgame":
+                    self.statusItem.setIcon(util.icon("chat/status/lobby.png"))
+                    self.statusItem.setToolTip("In Game Lobby<br/>"+url.toString())
+                elif url.scheme() == "faflive":
+                    self.statusItem.setIcon(util.icon("chat/status/playing.png"))
+                    self.statusItem.setToolTip("Playing Game<br/>"+url.toString())
         else:
                 self.statusItem.setIcon(QtGui.QIcon())
                 self.statusItem.setToolTip("Idle")
@@ -284,7 +293,7 @@ class Chatter(QtGui.QTableWidgetItem):
         
         # Actions for Games and Replays
         actionReplay = QtGui.QAction("View Live Replay", menu)
-        
+        actionVaultReplay = QtGui.QAction("View Replays in Vault", menu)
         actionJoin = QtGui.QAction("Join in Game", menu)
         #actionInvite = QtGui.QAction("Invite to Game", menu)
 
@@ -309,6 +318,7 @@ class Chatter(QtGui.QTableWidgetItem):
         actionStats.triggered.connect(self.viewStats)
         actionSelectAvatar.triggered.connect(self.selectAvatar)
         actionReplay.triggered.connect(self.viewReplay)
+        actionVaultReplay.triggered.connect(self.viewVaultReplay)
         actionJoin.triggered.connect(self.joinInGame)
         #actionInvite.triggered.connect(self.invite)
         
@@ -351,6 +361,7 @@ class Chatter(QtGui.QTableWidgetItem):
         
         menu.addSeparator()
         menu.addAction(actionReplay)
+        menu.addAction(actionVaultReplay)
         menu.addAction(actionJoin)
         menu.addSeparator()
             
@@ -416,7 +427,18 @@ class Chatter(QtGui.QTableWidgetItem):
         if self.name in client.instance.urls:
             fa.exe.replay(client.instance.urls[self.name])
 
-    
+    @QtCore.pyqtSlot()
+    def viewVaultReplay(self):
+        ''' see the player replays in the vault '''
+        self.lobby.client.replays.mapName.setText("")
+        self.lobby.client.replays.playerName.setText(self.name)
+        self.lobby.client.replays.minRating.setValue(0)
+        self.lobby.client.replays.searchVault()
+        self.lobby.client.mainTabs.setCurrentIndex(8)
+        #self.lobby.client.replays.send(dict(command="search", player = self.name, map="", rating="0", mod="All"))
+        
+            
+
     @QtCore.pyqtSlot()
     def joinInGame(self):
         if self.name in client.instance.urls:

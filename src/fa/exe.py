@@ -24,6 +24,7 @@ from PyQt4 import QtCore, QtGui
 import os
 import util
 import fa
+import modvault
 
 
 from fa import logger, writeFAPathLua, savePath
@@ -127,7 +128,6 @@ def __run(info, arguments, detach = False):
             QtGui.QMessageBox.warning(None, "ForgedAlliance.exe", "Another instance of FA is already running.")
             return False
 
-
 def replay(source, detach = False):
     '''
     Launches FA streaming the replay from the given location. Source can be a QUrl or a string
@@ -136,6 +136,7 @@ def replay(source, detach = False):
     
     if (available()):
         version = None
+        featured_mod_versions = None
         arg_string = None
         # Convert strings to URLs
         if isinstance(source, basestring):
@@ -143,6 +144,7 @@ def replay(source, detach = False):
                 if source.endswith(".fafreplay"):   # the new way of doing things
                     replay = open(source, "rt")
                     info = json.loads(replay.readline())
+                    
                     binary = QtCore.qUncompress(QtCore.QByteArray.fromBase64(replay.read()))
                     logger.info("Extracted " + str(binary.size()) + " bytes of binary data from .fafreplay.")
                     replay.close()
@@ -154,11 +156,21 @@ def replay(source, detach = False):
                     scfa_replay.close()                    
                                 
                     mapname = info.get('mapname', None)
-                    mod = info['featured_mod']                        
+                    mod = info['featured_mod']        
+                    featured_mod_versions = info.get('featured_mod_versions', None)
                     arg_string = scfa_replay.fileName()
                     
                     parser = replayParser(arg_string)
                     version = parser.getVersion() 
+                    
+                    if mod == "gw":
+                        infoReplayGW = fa.gwreplayinfo.GWReplayInfo(info['uid'])
+                        result = infoReplayGW.run()
+                        if (result != fa.gwreplayinfo.GWReplayInfo.RESULT_SUCCESS):
+                            logger.info("We don't have the info necessary for GW")
+                            return False                  
+
+                        logger.info("Writing GW game table file.")
 
                 elif source.endswith(".scfareplay"):   # compatibility mode
                     filename = os.path.basename(source)
@@ -169,10 +181,10 @@ def replay(source, detach = False):
                         mod = "faf" #TODO: maybe offer a list of mods for the user.
                         logger.warn("no mod could be guessed, using fallback ('faf') ")
                                     
-                    mapname = None                        
+                    mapname = None
                     arg_string = source
                     parser = replayParser(arg_string)
-                    version = parser.getVersion() 
+                    version = parser.getVersion()
                 else:
                     QtGui.QMessageBox.critical(None, "FA Forever Replay", "Sorry, FAF has no idea how to replay this file:<br/><b>" + source + "</b>")        
                 
@@ -185,8 +197,7 @@ def replay(source, detach = False):
             #Determine if it's a faflive url
             if url.scheme() == "faflive":
                 mod = url.queryItemValue("mod")
-                mapname = url.queryItemValue("map")
-
+                mapname = url.queryItemValue("map")                
                 # whip the URL into shape so ForgedAlliance.exe understands it
                 arg_url = QtCore.QUrl(url)
                 arg_url.setScheme("gpgnet")
@@ -221,9 +232,15 @@ def replay(source, detach = False):
         arguments.append('"' + util.LOG_FILE_REPLAY + '"')
 
         # Update the game appropriately
-        if not check(mod, mapname, version):
+        if not check(mod, mapname, version, featured_mod_versions):
             logger.error("Can't watch replays without an updated Forged Alliance game!")
             return False        
+
+        if mod == "gw":
+        # in case of GW, we need to alter the scenario for support AIs
+            if not fa.maps.gwmap(info['mapname']):
+                logger.error("You don't have the required map.")
+                return    
 
         # Finally, run executable        
         if __run(None, arguments, detach):
@@ -235,7 +252,7 @@ def replay(source, detach = False):
             
     
     
-def play(info, port, log = False, arguments = None):
+def play(info, port, log = False, arguments = None, gw = False):
     '''
     Launches FA with all necessary arguments.
     '''
@@ -254,9 +271,13 @@ def play(info, port, log = False, arguments = None):
         arguments.append('"' + util.LOG_FILE_GAME + '"')
     
     #live replay
+    
     arguments.append('/savereplay')
-    arguments.append('gpgnet://'+'localhost'+'/' + str(info['uid']) + "/" + str(info['recorder']) + '.SCFAreplay')
-            
+    if gw == False :
+        arguments.append('gpgnet://'+'localhost'+'/' + str(info['uid']) + "/" + str(info['recorder']) + '.SCFAreplay')
+    else :
+        arguments.append('gpgnet://'+'localhost'+'/' + str(info['uid']) + "/" + str(info['recorder']) + '.GWreplay')
+        
     #disable bug reporter
     arguments.append('/nobugreport')
     #arguments.append('/sse2')
@@ -291,10 +312,49 @@ def checkMap(mapname, force = False):
         return False
     
     return True
-    
 
+def checkMods(mods): #mods is a dictionary of uid-name pairs
+    '''
+    Assures that the specified mods are available in FA, or returns False.
+    Also sets the correct active mods in the ingame mod manager.
+    '''
+    logger.info("Updating FA for mods %s" % ", ".join(mods))
+    to_download = []
+    inst = modvault.getInstalledMods()
+    uids = [mod.uid for mod in inst]
+    for uid in mods:
+        if uid not in uids:
+            to_download.append(uid)
+
+    for uid in to_download:
+        result = QtGui.QMessageBox.question(None, "Download Mod", "Seems that you don't have this mod. Do you want to download it?<br/><b>" + mods[uid] + "</b>", QtGui.QMessageBox.Yes, QtGui.QMessageBox.No)
+        if result == QtGui.QMessageBox.Yes:
+            # Spawn an update for the required mod
+            updater = fa.updater.Updater(uid, sim=True)
+            result = updater.run()
+            updater = None #Our work here is done
+            if (result != fa.updater.Updater.RESULT_SUCCESS):
+                return False
+        else:
+            return False
+
+    actual_mods = []
+    inst = modvault.getInstalledMods()
+    uids = {}
+    for mod in inst:
+        uids[mod.uid] = mod
+    for uid in mods:
+        if uid not in uids:
+            QtGui.QMessageBox.warning(None, "Mod not Found", "%s was apparently not installed correctly. Please check this." % mods[uid])
+            return
+        actual_mods.append(uids[uid])
+    if not modvault.setActiveMods(actual_mods):
+        logger.warn("Couldn't set the active mods in the game.prefs file")
+        return False
+
+    return True
     
-def check(mod, mapname = None, version = None):
+def check(mod, mapname = None, version = None, modVersions = None, sim_mods = None):
     '''
     This checks whether the game is properly updated and has the correct map.
     '''
@@ -318,7 +378,7 @@ def check(mod, mapname = None, version = None):
     logger.info("Updating FA for mod: " + str(mod) + ", version " + str(version))
 
     # Spawn an update for the required mod
-    updater = fa.updater.Updater(mod, version)
+    updater = fa.updater.Updater(mod, version, modVersions)
             
     result = updater.run()
 
@@ -338,7 +398,11 @@ def check(mod, mapname = None, version = None):
 
     # Now it's down to having the right map
     if mapname:
-        return checkMap(mapname)
+        if not checkMap(mapname):
+            return False
+
+    if sim_mods:
+        return checkMods(sim_mods)
         
     return True #FA is checked and ready
         

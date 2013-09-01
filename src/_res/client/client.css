@@ -214,14 +214,16 @@ QListWidget::item:selected, QTreeWidget::item:previously-selected
 	border: none;
 }
 
-PlayerItemSearching:selected
+QListWidget#modList::item:selected
 {
-	background: #505050;
+	background-color: #505050;
+	color: #20A080;
+}
+{
 }
 
 PlayerItemInterested
 {
-	background: #1240AB;
 }
 PlayerItemInterested:hover
 {

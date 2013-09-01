@@ -45,6 +45,8 @@ import urllib2
 import sys
 import fa
 import tempfile
+import json
+import modvault
 
 logger = logging.getLogger("faf.updater")
 logger.setLevel(logging.DEBUG)
@@ -79,7 +81,8 @@ def fetchClientUpdate(url):
             progress.setAutoClose(True)
             progress.setAutoReset(False)
     
-            msifile  = urllib2.urlopen(url)
+            req = urllib2.Request(url, headers={'User-Agent' : "FAF Client"})
+            msifile  = urllib2.urlopen(req)
             meta = msifile.info()
         
             #Fix for #241, sometimes the server sends an error and no content-length.
@@ -250,7 +253,6 @@ def constructPathChoices(combobox):
         validateAndAdd(path, combobox)
 
 
-
 class Updater(QtCore.QObject):
     '''
     This is the class that does the actual installation work.
@@ -270,7 +272,7 @@ class Updater(QtCore.QObject):
     RESULT_PASS = 5         #User refuses to update by canceling the wizard
     
     
-    def __init__(self, mod, version = None, *args, **kwargs):
+    def __init__(self, mod, version = None, modversions = None, sim = False, *args, **kwargs):
         '''
         Constructor
         '''
@@ -282,9 +284,13 @@ class Updater(QtCore.QObject):
 
         self.lastData = time.time()
                 
-        self.mod = mod
+        self.mod            = mod        
+        self.version        = version
+        self.modversions    = modversions
         
-        self.version = version
+        self.sim = sim
+        self.modpath = None
+
         
         self.blockSize = 0
         self.updateSocket = QtNetwork.QTcpSocket()
@@ -350,7 +356,8 @@ class Updater(QtCore.QObject):
             progress.setAutoClose(True)
             progress.setAutoReset(False)
             
-            downloadedfile  = urllib2.urlopen(url)
+            req = urllib2.Request(url, headers={'User-Agent' : "FAF Client"})
+            downloadedfile  = urllib2.urlopen(req)
             meta = downloadedfile.info()
         
             #Fix for #241, sometimes the server sends an error and no content-length.
@@ -427,20 +434,21 @@ class Updater(QtCore.QObject):
         for fileToUpdate in self.filesToUpdate :
             md5File = util.md5(os.path.join(util.APPDATA_DIR, destination, fileToUpdate))              
             if md5File == None :
-                #TODO : only FAF supported now
-
-                if self.version and self.mod == "faf" :
-                    self.writeToServer("REQUEST_VERSION", destination, fileToUpdate, str(self.version))
+                if self.version :
+                    if self.mod == "faf" or self.mod == "ladder1v1" or filegroup == "FAF" or filegroup == "FAFGAMEDATA" :
+                        self.writeToServer("REQUEST_VERSION", destination, fileToUpdate, str(self.version))
+                    else :
+                        self.writeToServer("REQUEST_MOD_VERSION", destination, fileToUpdate, json.dumps(self.modversions))
                 else :
+                    
                     self.writeToServer("REQUEST_PATH", destination, fileToUpdate)
             else :
-
-                #TODO : only FAF supported now
                 if self.version :
-                    if  self.mod == "faf" or self.mod == "ladder1v1" :
+                    if self.mod == "faf" or self.mod == "ladder1v1" or filegroup == "FAF" or filegroup == "FAFGAMEDATA" :
                         self.writeToServer("PATCH_TO", destination, fileToUpdate, md5File, str(self.version))
                     else :
-                        self.writeToServer("UPDATE", destination, fileToUpdate, md5File)
+                        
+                        self.writeToServer("MOD_PATCH_TO", destination, fileToUpdate, md5File, json.dumps(self.modversions))
                 else :
                     self.writeToServer("UPDATE", destination, fileToUpdate, md5File)  
           
@@ -459,7 +467,22 @@ class Updater(QtCore.QObject):
         log("lua.scd digest is %s" % md5LUA)
         return md5LUA in ["4af45c46b0abb2805bea192e6e2517d4","5cdd99bddafa38f0873bd11dd353055a","ad999839d32f4784e331e5e8be1d32a2"]  
             
-
+    def waitForSimModPath(self):
+        '''
+        A simple loop that waits until the server has transmitted a sim mod path.
+        '''
+        self.lastData = time.time()
+        
+        self.progress.setValue(0)
+        self.progress.setMinimum(0)
+        self.progress.setMaximum(0)
+        
+        while self.modpath == None :    
+            if (self.progress.wasCanceled()) : raise UpdaterCancellation("Operation aborted while waiting for sim mod path.")
+            if (self.result != self.RESULT_NONE) : raise UpdaterFailure("Operation failed while waiting for sim mod path.")
+            if (time.time() - self.lastData > self.TIMEOUT) : raise UpdaterTimeout("Operation timed out while waiting for sim mod path.")
+            QtGui.QApplication.processEvents()
+      
 
     def waitForFileList(self):
         '''
@@ -533,18 +556,26 @@ class Updater(QtCore.QObject):
 
 #        if self.legalFAVersion():
         try:
-            #Prepare FAF directory & all necessary files
-            self.prepareBinFAF()
-        
-            #Update the mod if it's requested
-            if (self.mod == "faf" or self.mod == "ladder1v1"):   #HACK - ladder1v1 "is" FAF. :-)
-                self.updateFiles("bin", "FAF")
-                self.updateFiles("gamedata", "FAFGAMEDATA")
+            if self.sim == True:
+                self.writeToServer("REQUEST_SIM_PATH", self.mod)
+                self.waitForSimModPath()
+                if self.result == self.RESULT_SUCCESS:
+                    if modvault.downloadMod(self.modpath):
+                        self.writeToServer("ADD_DOWNLOAD_SIM_MOD", self.mod)
+                        
             else:
-                self.updateFiles("bin", "FAF")
-                self.updateFiles("gamedata", "FAFGAMEDATA")
-                self.updateFiles("bin", self.mod)
-                self.updateFiles("gamedata", self.mod + "Gamedata")
+                #Prepare FAF directory & all necessary files
+                self.prepareBinFAF()
+            
+                #Update the mod if it's requested
+                if (self.mod == "faf" or self.mod == "ladder1v1"):   #HACK - ladder1v1 "is" FAF. :-)
+                    self.updateFiles("bin", "FAF")
+                    self.updateFiles("gamedata", "FAFGAMEDATA")
+                else:
+                    self.updateFiles("bin", "FAF")
+                    self.updateFiles("gamedata", "FAFGAMEDATA")
+                    self.updateFiles("bin", self.mod)
+                    self.updateFiles("gamedata", self.mod + "Gamedata")
             
         except UpdaterTimeout, et:
             log("TIMEOUT: %s(%s)" % (et.__class__.__name__, str(et.args)))
@@ -609,12 +640,24 @@ class Updater(QtCore.QObject):
         '''
         log("handleAction(%s) - %d bytes" % (action, bytecount))
 
-        if action == "LIST_FILES_TO_UP" :
+        if action == "PATH_TO_SIM_MOD":
+            path = stream.readQString()
+            self.modpath = path
+            self.result = self.RESULT_SUCCESS
+            return
+        
+        elif action == "SIM_MOD_NOT_FOUND" :
+            log("Error: Unknown sim mod requested.")
+            self.modpath = ""
+            self.result = self.RESULT_FAILURE
+            return
+
+        elif action == "LIST_FILES_TO_UP" :
             self.filesToUpdate = eval(str(stream.readQString()))
             if (self.filesToUpdate == None):
                 self.filesToUpdate = []
             return  
-        
+
         elif action == "UNKNOWN_APP" :
             log("Error: Unknown app/mod requested.")
             self.result = self.RESULT_FAILURE            
@@ -629,6 +672,12 @@ class Updater(QtCore.QObject):
             response = stream.readQString()
             log("Error: Patch version %s not found for %s." % (self.version, response))
             self.writeToServer("REQUEST_VERSION", self.destination, response, self.version)
+            return
+
+        elif action == "VERSION_MOD_PATCH_NOT_FOUND" :
+            response = stream.readQString()
+            log("Error: Patch version %s not found for %s." % (str(self.modversions), response))
+            self.writeToServer("REQUEST_MOD_VERSION", self.destination, response, json.dumps(self.modversions))
             return
         
         elif action == "PATCH_NOT_FOUND" :
@@ -804,8 +853,6 @@ class Updater(QtCore.QObject):
             self.progress.setValue(0)
             self.progress.setMinimum(0)
             self.progress.setMaximum(0)
-
-
 
     def writeToServer(self, action, *args, **kw):        
         log(("writeToServer(" + action + ", [" + ', '.join(args) + "])"))

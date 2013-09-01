@@ -17,7 +17,12 @@
 #-------------------------------------------------------------------------------
 
 
-
+import sip
+sip.setapi('QString', 2)
+sip.setapi('QVariant', 2)
+sip.setapi('QStringList', 2)
+sip.setapi('QList', 2)
+sip.setapi('QProcess', 2)
 
 
 import logging
@@ -37,10 +42,12 @@ import util
 import os, stat
 import struct
 import FreeImagePy as FIPY
+import warnings
 import shutil
 import urllib2
 import zipfile
 import tempfile
+import re
 
 
 VAULT_PREVIEW_ROOT = "http://www.faforever.com/faf/vault/map_previews/small/" 
@@ -107,6 +114,42 @@ maps = { # A Lookup table for info (names, sizes, players) of the official Forge
 
 __exist_maps = None
 
+def gwmap(mapname):
+    folder = folderForMap(mapname)
+    if folder:       
+        scenario = getScenarioFile(folder)        
+        if scenario:
+            
+            if not os.path.isdir(os.path.join(getUserMapsFolder(), "gwScenario")):
+                os.makedirs(os.path.join(getUserMapsFolder(), "gwScenario"))                        
+            save = os.path.join(getUserMapsFolder(), "gwScenario", "gw_scenario.lua")
+
+            fopen = open(os.path.join(folder, scenario), 'r')
+            temp = []
+            for line in fopen:
+                temp.append(line.rstrip())                
+            text = " ".join(temp)
+            
+            pattern = re.compile("customprops.*?=.*?({.*?}),")
+            match = re.search(pattern, text)
+            if match:
+                pattern2 = re.compile("'*ExtraArmies'*.*?[\"'](.*)[\"']")
+                match2 = re.search(pattern2, match.group(1))
+                if match2 :
+                    text = text.replace(match2.group(1), "SUPPORT_1 SUPPORT_2 " + match2.group(1))
+                else:
+                    text = text.replace(match.group(1), "{ ExtraArmies=\" SUPPORT_1 SUPPORT_2\" }")
+            
+            fopen.close()
+            f  = open(save, 'w')
+            f.write(text)
+            f.close() 
+            return True
+            
+    return False
+            
+        
+
 def isBase(mapname):
     '''
     Returns true if mapname is the name of an official map
@@ -154,9 +197,8 @@ def getScenarioFile(folder):
     ''' 
     Return the scenario.lua file
     '''
-    baseName = os.path.basename(folder).split('.')[0]
     for infile in os.listdir(folder) :
-        if infile.lower() == (baseName.lower() + "_scenario.lua") :
+        if infile.lower().endswith("_scenario.lua") :
             return infile 
     return None
 
@@ -164,9 +206,8 @@ def getSaveFile(folder):
     ''' 
     Return the save.lua file
     '''
-    baseName = os.path.basename(folder).split('.')[0]
     for infile in os.listdir(folder) :
-        if infile.lower() == (baseName.lower() + "_save.lua") :
+        if infile.lower().endswith("_save.lua") :
             return infile 
     return None
 
@@ -210,6 +251,7 @@ def existMaps(force = False):
                 __exist_maps.extend(os.listdir(getBaseMapsFolder()))
     return __exist_maps        
     
+
 
 def isMapAvailable(mapname):
     '''
@@ -270,6 +312,8 @@ def __exportPreviewFromMap(mapname, positions=None):
     '''
     This method auto-upgrades the maps to have small and large preview images
     '''
+    if mapname == "" or mapname == None:
+        return
     smallExists = False
     largeExists = False
     ddsExists = False
@@ -367,9 +411,11 @@ def __exportPreviewFromMap(mapname, positions=None):
     
     if not smallExists:
         logger.debug("Making small preview from DDS for: " + mapname)
+        warnings.simplefilter("ignore")
         f = FIPY.Image(previewddsname)
         f.setSize((100,100))
         f.save(previewsmallname)
+        warnings.simplefilter("error")
         #checking if file was created correctly, just in case
         if os.path.isfile(previewsmallname):
             previews["tozip"].append(previewsmallname)
@@ -391,8 +437,10 @@ def __exportPreviewFromMap(mapname, positions=None):
             logger.debug("Icon positions were not passed or they were wrong for: " + mapname)
             return previews
         #convert dds into png
+        warnings.simplefilter("ignore")
         mapimage = FIPY.Image(previewddsname)
         mapimage.save(previewlargename)
+        warnings.simplefilter("error")
         #prepare icons
         mapimage = QtGui.QPixmap(previewlargename)
         armyicon = QtGui.QPixmap(os.path.join(os.getcwd(), ur"_res\vault\map_icons\army.png")).scaled(8, 9, 1, 1)
@@ -444,18 +492,21 @@ def __downloadPreviewFromWeb(name):
         
     for extension in iconExtensions:
         try:
-            req = urllib2.urlopen(VAULT_PREVIEW_ROOT + urllib2.quote(name) + "." + extension)
+            header = urllib2.Request(VAULT_PREVIEW_ROOT + urllib2.quote(name) + "." + extension, headers={'User-Agent' : "FAF Client"})   
+            req = urllib2.urlopen(header)
             img = os.path.join(util.CACHE_DIR, name + "." + extension)
             with open(img, 'wb') as fp:
-                shutil.copyfileobj(req, fp)        
+                shutil.copyfileobj(req, fp)
                 fp.flush()
                 os.fsync(fp.fileno())       #probably works fine without the flush and fsync
                 fp.close()
                 
                 #Create alpha-mapped preview image
+                warnings.simplefilter("ignore")
                 f = FIPY.Image(img)
                 f.setSize((100,100))
                 f.save(img)
+                warnings.simplefilter("error")
                 logger.debug("Web Preview " + extension + " used for: " + name)
                 return img
         except:
@@ -465,7 +516,7 @@ def __downloadPreviewFromWeb(name):
     logger.debug("Web Preview not found for: " + name)
     return None
      
-def preview(mapname, pixmap = False):
+def preview(mapname, pixmap = False, force=False):
     try:
         # Try to load directly from cache
         for extension in iconExtensions:
@@ -473,18 +524,20 @@ def preview(mapname, pixmap = False):
             if os.path.isfile(img):
                 logger.debug("Using cached preview image for: " + mapname)
                 return util.icon(img, False, pixmap)
-        
+        if force :
         # Try to download from web
-        img = __downloadPreviewFromWeb(mapname)
-        if img and os.path.isfile(img):
-            logger.debug("Using web preview image for: " + mapname)
-            return util.icon(img, False, pixmap)
+            img = __downloadPreviewFromWeb(mapname)
+            if img and os.path.isfile(img):
+                logger.debug("Using web preview image for: " + mapname)
+                return util.icon(img, False, pixmap)
     
         # Try to find in local map folder    
         img = __exportPreviewFromMap(mapname)["cache"]
         if img and os.path.isfile(img):
             logger.debug("Using fresh preview image for: " + mapname)
             return util.icon(img, False, pixmap)
+        
+        return None
     except:
         logger.error("Error raised in maps.preview(...) for " + mapname)
         logger.error("Map Preview Exception", exc_info=sys.exc_info())
@@ -497,7 +550,7 @@ def downloadMap(name):
     Download a map from the vault with the given name
     LATER: This type of method is so common, it could be put into a nice util method.
     '''
-    link = name2link(name)    
+    link = name2link(name)
     url = VAULT_DOWNLOAD_ROOT + link
     logger.debug("Getting map from: " + url)
 
@@ -508,7 +561,8 @@ def downloadMap(name):
     progress.setAutoReset(False)
     
     try:
-        zipwebfile  = urllib2.urlopen(url)
+        req = urllib2.Request(url, headers={'User-Agent' : "FAF Client"})         
+        zipwebfile  = urllib2.urlopen(req)
         meta = zipwebfile.info()
         file_size = int(meta.getheaders("Content-Length")[0])
 
@@ -545,7 +599,7 @@ def downloadMap(name):
 
     except:
         logger.warn("Map download or extraction failed for: " + url)        
-        if sys.exc_type is HTTPError:            
+        if sys.exc_type is HTTPError:
             logger.warning("Vault download failed with HTTPError, map probably not in vault (or broken).")
             QtGui.QMessageBox.information(None, "Map not downloadable", "<b>This map was not found in the vault (or is broken).</b><br/>You need to get it from somewhere else in order to use it." )
         else:                
@@ -556,7 +610,8 @@ def downloadMap(name):
     #Count the map downloads
     try:
         url = VAULT_COUNTER_ROOT + "?map=" + urllib2.quote(link)
-        urllib2.urlopen(url)
+        req = urllib2.Request(url, headers={'User-Agent' : "FAF Client"})
+        urllib2.urlopen(req)
         logger.debug("Successfully sent download counter request for: " + url)        
         
     except:
@@ -603,6 +658,3 @@ def processMapFolderForUpload(mapDir, positions):
     temp.flush()
     
     return temp
-
-
-

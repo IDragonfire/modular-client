@@ -1,5 +1,5 @@
 #-------------------------------------------------------------------------------
-# Copyright (c) 2012 Gael Honorez.
+# Copyright (c) 2013 Gael Honorez.
 # All rights reserved. This program and the accompanying materials
 # are made available under the terms of the GNU Public License v3.0
 # which accompanies this distribution, and is available at
@@ -16,17 +16,22 @@
 # GNU General Public License for more details.
 #-------------------------------------------------------------------------------
 
+from PyQt4 import QtCore
+import util.slpp
+import os
+import zipfile
+import StringIO
 
-
-
-
-from PyQt4 import QtGui, QtCore
-
-class GalacticWar(QtCore.QObject):
-    def __init__(self, client, *args, **kwargs):
-        QtCore.QObject.__init__(self, *args, **kwargs)
-        self.ui = QtGui.QGraphicsView()
-        self.ui.setAutoFillBackground(False)
-        self.client = client
-        self.client.galacticTab.layout().addWidget(self.ui)
-        
+def writeTable(upgrades, file):
+    ''' write a lua table inside a file '''
+    destination = os.path.join(util.APPDATA_DIR, "gamedata", file)
+    gwFile = QtCore.QFile(destination)
+    gwFile.open(QtCore.QIODevice.WriteOnly)
+    lua = util.slpp.SLPP()
+    s = StringIO.StringIO()  
+    z = zipfile.ZipFile(s, 'w')  
+    z.writestr('lua/gwReinforcementList.lua', str(lua.encodeReinforcements(upgrades))) 
+    z.close()
+    gwFile.write(s.getvalue())
+    gwFile.close()
+    s.close()
