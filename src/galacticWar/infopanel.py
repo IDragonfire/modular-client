@@ -80,11 +80,12 @@ class InfoPanelWidget(FormClass, BaseClass):
 
         self.planetaryDefensesButton.hide()
         self.reinforcementButton.hide()
+        self.dominationText.hide()
         
     def setup(self):
         self.attackButton.hide()
         self.defenseButton.hide()
-        self.dominationText.hide()
+        
     
     def quitSquad(self):
         ''' quit a squad '''
@@ -255,9 +256,10 @@ class InfoPanelWidget(FormClass, BaseClass):
         self.defenseButton.hide()
         
         faction = self.parent.faction
+
         if self.parent.enslavedBy != None:
             faction = self.parent.enslavedBy
-            
+
         if faction == None :
             self.planet = None
             return
