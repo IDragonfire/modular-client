@@ -31,7 +31,7 @@ from types import IntType, FloatType, ListType, DictType
 
 from client import logger, ClientState, MUMBLE_URL, WEBSITE_URL, WIKI_URL,\
     FORUMS_URL, UNITDB_URL, SUPPORT_URL, TICKET_URL, GAME_PORT_DEFAULT, LOBBY_HOST,\
-    LOBBY_PORT, LOCAL_REPLAY_PORT
+    LOBBY_PORT, LOCAL_REPLAY_PORT, STEAMLINK_URL
 
 import util
 import fa
@@ -328,6 +328,7 @@ class ClientWindow(FormClass, BaseClass):
      
     def initMenus(self):
         self.actionLinkMumble.triggered.connect(self.linkMumble)
+        self.actionLink_account_to_Steam.triggered.connect(self.linkToSteam)
         self.actionLinkWebsite.triggered.connect(self.linkWebsite)
         self.actionLinkWiki.triggered.connect(self.linkWiki)
         self.actionLinkForums.triggered.connect(self.linkForums)
@@ -407,6 +408,10 @@ class ClientWindow(FormClass, BaseClass):
     def switchPort(self):
         import loginwizards
         loginwizards.gameSettingsWizard(self).exec_()
+
+    @QtCore.pyqtSlot()
+    def linkToSteam(self):
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl(STEAMLINK_URL))
         
     @QtCore.pyqtSlot()
     def setMumbleOptions(self):
@@ -1356,7 +1361,9 @@ class ClientWindow(FormClass, BaseClass):
                 
         
     def handle_game_launch(self, message):
+        
         logger.info("Handling game_launch via JSON " + str(message))
+        silent = False
         if 'args' in message:            
             arguments = message['args']
         else:
@@ -1378,7 +1385,8 @@ class ClientWindow(FormClass, BaseClass):
             if message['reason'] == 'gw' :
                 rank = True
                 galacticWar = True
-                if (not fa.exe.check(message[modkey])):
+                silent = True
+                if (not fa.exe.check(message[modkey], silent=silent)):
                     logger.error("Can't play %s without successfully updating Forged Alliance." % message[modkey])
                     return  
             
@@ -1407,7 +1415,8 @@ class ClientWindow(FormClass, BaseClass):
             
         # Ensure we have the map
         if "mapname" in message:
-            fa.exe.checkMap(message['mapname'], True)
+
+            fa.exe.checkMap(message['mapname'], force=True, silent=silent)
             if galacticWar:
                 # in case of GW, we need to alter the scenario for support AIs
                 if not fa.maps.gwmap(message['mapname']):
