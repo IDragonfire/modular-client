@@ -56,7 +56,19 @@ QPushButton:hover {
 QFrame {
 	background-color: #202328;
 	alternate-background-color: #2e3236;
-}</string>
+}
+
+/* Scrollbars*/
+QScrollBar {
+	background-color: #272b30;
+    border-radius: 5px;
+}
+
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+   background: none;
+}
+
+</string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0">
    <item>
