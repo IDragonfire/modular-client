@@ -1,0 +1,318 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>370</width>
+    <height>430</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Friendlist</string>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">QDialog {
+	background-color: #272b30;
+    color: lightgrey;
+}
+
+* {
+	color: lightgrey;
+   font-family: Verdana;
+   border-radius: 5px;
+}
+
+QHeaderView::section {
+    background: #272b30;
+    border-radius: 5px;
+    padding: 3px;
+}
+
+QPushButton {
+	background-color: qlineargradient(spread:pad, x1:0, y1:0, x2:0, y2:1, stop:0 #52575c, stop:1 #3A3E41);
+	color:#ffffff;
+   font-weight: bold;
+	padding:5px;
+    border:1px solid #272b30;
+    border-radius: 5px;
+	border-top-color: grey;
+}
+
+
+QPushButton:disabled {
+	background-color: #3a3e41;
+	color: grey;
+   border: 1px solid #3a3e41;;
+}
+
+QPushButton:hover {
+	color: #3a3f44;
+  background-color: #e6e6e6;
+}
+
+QFrame {
+	background-color: #202328;
+	alternate-background-color: #2e3236;
+}</string>
+  </property>
+  <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0">
+   <item>
+    <widget class="QFrame" name="frame_2">
+     <property name="styleSheet">
+      <string notr="true">QLabel {
+	font-size: 14px;
+	font-weight: bold;
+   color: #fff;
+}</string>
+     </property>
+     <property name="frameShape">
+      <enum>QFrame::Panel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <property name="lineWidth">
+      <number>2</number>
+     </property>
+     <layout class="QVBoxLayout" name="verticalLayout_2">
+      <item>
+       <widget class="QLabel" name="label">
+        <property name="text">
+         <string>[DEV] Dragonfire</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="frame">
+     <property name="frameShape">
+      <enum>QFrame::Panel</enum>
+     </property>
+     <property name="frameShadow">
+      <enum>QFrame::Raised</enum>
+     </property>
+     <property name="lineWidth">
+      <number>2</number>
+     </property>
+     <layout class="QGridLayout" name="gridLayout">
+      <item row="1" column="1">
+       <widget class="QPushButton" name="pushButton_3">
+        <property name="text">
+         <string>Collape All</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QPushButton" name="pushButton_2">
+        <property name="text">
+         <string>Expand All</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="0" colspan="2">
+       <widget class="QTreeWidget" name="treeWidget">
+        <column>
+         <property name="text">
+          <string>Name</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Country</string>
+         </property>
+        </column>
+        <column>
+         <property name="text">
+          <string>Rating</string>
+         </property>
+        </column>
+        <item>
+         <property name="text">
+          <string>Devs</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <item>
+          <property name="text">
+           <string>Zep</string>
+          </property>
+          <property name="text">
+           <string>ba</string>
+          </property>
+          <property name="text">
+           <string>1800</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Pip</string>
+          </property>
+          <property name="text">
+           <string>ru</string>
+          </property>
+          <property name="text">
+           <string>1300</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Brute61</string>
+          </property>
+          <property name="text">
+           <string>os</string>
+          </property>
+          <property name="text">
+           <string/>
+          </property>
+         </item>
+        </item>
+        <item>
+         <property name="text">
+          <string>Players</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <item>
+          <property name="text">
+           <string>Sheppard</string>
+          </property>
+          <property name="text">
+           <string>de</string>
+          </property>
+          <property name="text">
+           <string>2000</string>
+          </property>
+         </item>
+        </item>
+        <item>
+         <property name="text">
+          <string>Caster</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <item>
+          <property name="text">
+           <string>RA_ZLO</string>
+          </property>
+          <property name="text">
+           <string>ru</string>
+          </property>
+          <property name="text">
+           <string>2200</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Gyle</string>
+          </property>
+          <property name="text">
+           <string>en</string>
+          </property>
+          <property name="text">
+           <string>1200</string>
+          </property>
+         </item>
+        </item>
+        <item>
+         <property name="text">
+          <string>offline</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+         <item>
+          <property name="text">
+           <string>Sulo</string>
+          </property>
+          <property name="text">
+           <string>de</string>
+          </property>
+          <property name="text">
+           <string>1100</string>
+          </property>
+         </item>
+         <item>
+          <property name="text">
+           <string>Skalar</string>
+          </property>
+          <property name="text">
+           <string>pol</string>
+          </property>
+          <property name="text">
+           <string>900</string>
+          </property>
+         </item>
+        </item>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="pushButton">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="text">
+      <string>Add Friend</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections>
+  <connection>
+   <sender>pushButton_2</sender>
+   <signal>clicked()</signal>
+   <receiver>treeWidget</receiver>
+   <slot>expandAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>97</x>
+     <y>357</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>106</x>
+     <y>177</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_3</sender>
+   <signal>clicked()</signal>
+   <receiver>treeWidget</receiver>
+   <slot>collapseAll()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>278</x>
+     <y>359</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>234</x>
+     <y>214</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
+</ui>
