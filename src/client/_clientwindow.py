@@ -15,6 +15,7 @@
 # MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 # GNU General Public License for more details.
 #-------------------------------------------------------------------------------
+from friendlist import FriendList
 
 
 
@@ -500,6 +501,8 @@ class ClientWindow(FormClass, BaseClass):
         self.Coop = coop.Coop(self)
         self.notificationSystem = ns.NotificationSystem(self)
 
+        self.friendList = FriendList(self)
+
         # set menu states
         self.actionNsEnabled.setChecked(self.notificationSystem.settings.enabled)
 
@@ -561,6 +564,10 @@ class ClientWindow(FormClass, BaseClass):
         self.rankedUEF.clicked.connect(self.rankedGameUEF)
         self.rankedRandom.clicked.connect(self.rankedGameRandom)
         self.warningHide()
+
+    def show(self):
+        super(FormClass, self).show()
+        self.friendList.dialog.show()
 
 
     def warningHide(self):
