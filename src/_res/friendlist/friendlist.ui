@@ -67,7 +67,6 @@ QScrollBar {
 QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
    background: none;
 }
-
 </string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout_3" stretch="0,0,0">
@@ -128,6 +127,9 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
       </item>
       <item row="0" column="0" colspan="2">
        <widget class="QTreeWidget" name="treeWidget">
+        <property name="selectionMode">
+         <enum>QAbstractItemView::NoSelection</enum>
+        </property>
         <column>
          <property name="text">
           <string>Name</string>
