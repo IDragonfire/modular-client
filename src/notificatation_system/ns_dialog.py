@@ -36,7 +36,7 @@ class NotficationDialog(FormClass, BaseClass):
         self.labelTime.setText(time.strftime("%H:%M:%S", time.gmtime()))
         QtCore.QTimer.singleShot(lifetime * 1000, self, QtCore.SLOT('hide()'))
         if sound:
-            util.sound("chat/sfx/query.wav")
+            util.sound("notification_system/sfx/multimedia_pop_up_alert_tone_2.wav")
         self.show()
 
     @QtCore.pyqtSlot()
