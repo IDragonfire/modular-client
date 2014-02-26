@@ -302,6 +302,7 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
 
         for user in listing:
             self.channels[channel].addChatter(user)
+            self.client.friendList.addUser(user)
 
 
             if self.client.GalacticWar.channel and channel == self.client.GalacticWar.channel.name :
@@ -354,6 +355,8 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
         if channel.lower() in self.crucialChannels and username != self.client.login:
             # TODO: search better solution, that html in nick & channel no rendered
             self.client.notificationSystem.on_event(ns.NotificationSystem.USER_ONLINE,{'user':username, 'channel':channel})
+            # TODO: use signal?
+            self.client.friendList.addUser(username)
         self.channels[channel].resizing()
 
 
@@ -372,6 +375,7 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
         for channel in self.channels:
             if (not self.channels[channel].private) or (self.channels[channel].name == user2name(name)):
                 self.channels[channel].removeChatter(name, "quit.")
+                self.client.friendList.removeUser(name)
 
     def on_nick(self, c, e):
         self.serverLogArea.appendPlainText("[%s: %s->%s]" % (e.eventtype(), e.source(), e.target()) + "\n".join(e.arguments()))

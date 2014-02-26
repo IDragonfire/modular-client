@@ -126,157 +126,25 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
        </widget>
       </item>
       <item row="0" column="0" colspan="2">
-       <widget class="QTreeWidget" name="treeWidget">
+       <widget class="QTreeView" name="friendlist">
+        <property name="editTriggers">
+         <set>QAbstractItemView::NoEditTriggers</set>
+        </property>
+        <property name="showDropIndicator" stdset="0">
+         <bool>false</bool>
+        </property>
+        <property name="dragDropMode">
+         <enum>QAbstractItemView::NoDragDrop</enum>
+        </property>
         <property name="selectionMode">
          <enum>QAbstractItemView::NoSelection</enum>
         </property>
-        <column>
-         <property name="text">
-          <string>Name</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Country</string>
-         </property>
-        </column>
-        <column>
-         <property name="text">
-          <string>Rating</string>
-         </property>
-        </column>
-        <item>
-         <property name="text">
-          <string>Devs</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <item>
-          <property name="text">
-           <string>Zep</string>
-          </property>
-          <property name="text">
-           <string>ba</string>
-          </property>
-          <property name="text">
-           <string>1800</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Pip</string>
-          </property>
-          <property name="text">
-           <string>ru</string>
-          </property>
-          <property name="text">
-           <string>1300</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Brute61</string>
-          </property>
-          <property name="text">
-           <string>os</string>
-          </property>
-          <property name="text">
-           <string/>
-          </property>
-         </item>
-        </item>
-        <item>
-         <property name="text">
-          <string>Players</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <item>
-          <property name="text">
-           <string>Sheppard</string>
-          </property>
-          <property name="text">
-           <string>de</string>
-          </property>
-          <property name="text">
-           <string>2000</string>
-          </property>
-         </item>
-        </item>
-        <item>
-         <property name="text">
-          <string>Caster</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <item>
-          <property name="text">
-           <string>RA_ZLO</string>
-          </property>
-          <property name="text">
-           <string>ru</string>
-          </property>
-          <property name="text">
-           <string>2200</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Gyle</string>
-          </property>
-          <property name="text">
-           <string>en</string>
-          </property>
-          <property name="text">
-           <string>1200</string>
-          </property>
-         </item>
-        </item>
-        <item>
-         <property name="text">
-          <string>offline</string>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <property name="text">
-          <string/>
-         </property>
-         <item>
-          <property name="text">
-           <string>Sulo</string>
-          </property>
-          <property name="text">
-           <string>de</string>
-          </property>
-          <property name="text">
-           <string>1100</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>Skalar</string>
-          </property>
-          <property name="text">
-           <string>pol</string>
-          </property>
-          <property name="text">
-           <string>900</string>
-          </property>
-         </item>
-        </item>
+        <property name="indentation">
+         <number>10</number>
+        </property>
+        <property name="uniformRowHeights">
+         <bool>true</bool>
+        </property>
        </widget>
       </item>
      </layout>
@@ -299,32 +167,32 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
   <connection>
    <sender>pushButton_2</sender>
    <signal>clicked()</signal>
-   <receiver>treeWidget</receiver>
+   <receiver>friendlist</receiver>
    <slot>expandAll()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>97</x>
-     <y>357</y>
+     <x>127</x>
+     <y>366</y>
     </hint>
     <hint type="destinationlabel">
-     <x>106</x>
-     <y>177</y>
+     <x>153</x>
+     <y>277</y>
     </hint>
    </hints>
   </connection>
   <connection>
    <sender>pushButton_3</sender>
    <signal>clicked()</signal>
-   <receiver>treeWidget</receiver>
+   <receiver>friendlist</receiver>
    <slot>collapseAll()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>278</x>
-     <y>359</y>
+     <x>270</x>
+     <y>364</y>
     </hint>
     <hint type="destinationlabel">
-     <x>234</x>
-     <y>214</y>
+     <x>245</x>
+     <y>224</y>
     </hint>
    </hints>
   </connection>
