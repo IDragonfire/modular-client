@@ -502,6 +502,8 @@ class ClientWindow(FormClass, BaseClass):
         self.notificationSystem = ns.NotificationSystem(self)
 
         self.friendList = FriendList(self)
+        # fire to much
+        #self.usersUpdated.connect(self.friendList.updateFriendList)
 
         # set menu states
         self.actionNsEnabled.setChecked(self.notificationSystem.settings.enabled)
@@ -1608,6 +1610,7 @@ class ClientWindow(FormClass, BaseClass):
         self.send(dict(command="social", friends=self.friends)) #LATER: Use this line instead
         #self.writeToServer("ADD_FRIEND", friend)
         self.usersUpdated.emit([friend])
+        self.friendList.updateFriendList()
 
     def addFoe(self, foe):
         '''Adding a new foe by user'''
@@ -1964,6 +1967,7 @@ class ClientWindow(FormClass, BaseClass):
         if "friends" in message:
             self.friends = message["friends"]
             self.usersUpdated.emit(self.players.keys())
+            self.friendList.updateFriendList()
 
         if "foes" in message:
             self.foes = message["foes"]
