@@ -47,7 +47,10 @@ import os
 import random
 import notificatation_system as ns
 
-from profile import playerstats
+try:
+    from profile import playerstats
+except:
+    pass
 
 class ClientOutdated(StandardError):
     pass
@@ -177,7 +180,10 @@ class ClientWindow(FormClass, BaseClass):
 
         self.uniqueId = None
         self.udpTest = False
-        self.profile = playerstats.Statpage(self)
+        try:
+            self.profile = playerstats.Statpage(self)
+        except:
+            pass
 
         self.sendFile = False
         self.progress = QtGui.QProgressDialog()
@@ -1799,6 +1805,11 @@ class ClientWindow(FormClass, BaseClass):
             arguments.append('/country ') #Add country command line argument - Vicarian
             country = self.getUserCountry(self.login) #Add country command line argument - Vicarian
             arguments.append(str(country)) #Add country command line argument - Vicarian
+
+        clan = self.getUserClan(self.login)
+        if clan and galacticWar == False:
+            arguments.append('/clan')
+            arguments.append(clan)
 
         # Ensure we have the map
         if "mapname" in message:
