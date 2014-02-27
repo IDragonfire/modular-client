@@ -375,7 +375,6 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
         for channel in self.channels:
             if (not self.channels[channel].private) or (self.channels[channel].name == user2name(name)):
                 self.channels[channel].removeChatter(name, "quit.")
-                self.client.friendList.removeUser(name)
 
     def on_nick(self, c, e):
         self.serverLogArea.appendPlainText("[%s: %s->%s]" % (e.eventtype(), e.source(), e.target()) + "\n".join(e.arguments()))

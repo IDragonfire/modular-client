@@ -18,6 +18,7 @@ class FriendListDialog(FormClass, BaseClass):
 
         # stretch first column
         self.friendlist.header().setResizeMode(0, QtGui.QHeaderView.Stretch)
+        self.friendlist.expandAll()
 
         # Frameless
         #self.setWindowFlags(QtCore.Qt.FramelessWindowHint | QtCore.Qt.WindowSystemMenuHint | QtCore.Qt.WindowMinimizeButtonHint)
@@ -26,11 +27,19 @@ class FriendListDialog(FormClass, BaseClass):
         self.rubberBand = QtGui.QRubberBand(QtGui.QRubberBand.Rectangle)
 
     def addFriend(self, groupIndex, username):
-        if username in self.model.root[groupIndex].users:
-            return
-        self.model.beginInsertRows(self.model.index(groupIndex, 0, QtCore.QModelIndex()), 0, 1)
+        n = len(self.model.root[groupIndex].users)
+        self.model.beginInsertRows(self.model.index(groupIndex, 0, QtCore.QModelIndex()), n, n)
         self.model.root[groupIndex].addUser(username)
         self.model.endInsertRows()
+        #self.model.emit(QtCore.SIGNAL('dataChanged'), QtCore.QModelIndex(), QtCore.QModelIndex())
+
+    def removeFriend(self, groupIndex, username):
+        row = self.model.root[groupIndex].getRowOfUser(username)
+        if row > 0:
+            self.model.beginRemoveRows(self.model.index(groupIndex, 0, QtCore.QModelIndex()), row, row)
+            del self.model.root[groupIndex].users[row]
+            self.model.endRemoveRows()
+        #self.model.emit(QtCore.SIGNAL('dataChanged'), QtCore.QModelIndex(), QtCore.QModelIndex())
 
 class FriendGroup():
     def __init__(self, name):
@@ -40,10 +49,22 @@ class FriendGroup():
     def addUser(self, user):
         self.users.append(User(user, self))
 
+    def getRowOfUser(self, user):
+        for i in xrange(0, len(self.users)):
+            if self.users[i].username == user:
+                return i
+        return -1
+
 class User():
     def __init__(self, username, group):
         self.username = username
         self.group = group
+
+    def __str__(self):
+        return self.username
+
+    def __repr__(self):
+        return self.username
 
 
 class FriendListModel(QtCore.QAbstractItemModel):
@@ -52,7 +73,7 @@ class FriendListModel(QtCore.QAbstractItemModel):
         self.root = groups
         self.client = client
 
-        self.header = ['Player', 'country', 'rating', '#']
+        self.header = ['Player', 'land', 'rating', '#']
 
     def columnCount(self, parent):
         return len(self.header);
@@ -87,13 +108,23 @@ class FriendListModel(QtCore.QAbstractItemModel):
             return None
         pointer = index.internalPointer()
         if role == QtCore.Qt.DecorationRole and hasattr(pointer, 'username') and index.column() == 0:
+            indent = 6
+            pix = QtGui.QPixmap(40+16 + indent, 20)
+            pix.fill(QtCore.Qt.transparent)
+            painter = QtGui.QPainter(pix)
+
             avatar =  self.client.getUserAvatar(pointer.username)
             if avatar:
-                return util.respix(avatar["url"])
+                avatar = util.respix(avatar["url"])
+                if avatar:
+                    painter.drawPixmap(0, 0, avatar)
+
             country = self.client.getUserCountry(pointer.username)
             if country != None:
-                return util.icon("chat/countries/%s.png" % country.lower())
-            return None
+                painter.drawPixmap(40 + indent, 2, util.icon("chat/countries/%s.png" % country.lower(), pix=True))
+            painter.end()
+
+            return pix
 
 
         if role == QtCore.Qt.DisplayRole:

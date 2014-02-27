@@ -13,14 +13,27 @@ class FriendList():
     def addUser(self, user):
         self.users.add(user)
         if self.client.isFriend(user):
+            self.dialog.removeFriend(1, user)
             self.dialog.addFriend(0,user)
         #print 'addUser', user
 
     def removeUser(self, user):
+        print 'remove user', user
         if user in self.users:
             self.users.remove(user)
+            if self.client.isFriend(user):
+                self.dialog.removeFriend(0, user)
+                self.dialog.addFriend(1, user)
         else:
             print 'not registered:', user
+
+    def addFriend(self, friend):
+        self.addUser(friend)
+
+    def removeFriend(self, friend):
+        self.dialog.removeFriend(0, friend)
+        self.dialog.removeFriend(1, friend)
+
 
     def updateFriendList(self):
         print 'addFriend', self.client.friends
