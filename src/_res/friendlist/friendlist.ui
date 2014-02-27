@@ -127,6 +127,12 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
       </item>
       <item row="0" column="0" colspan="2">
        <widget class="QTreeView" name="friendlist">
+        <property name="styleSheet">
+         <string notr="true"> QTreeView::branch:has-children {
+   border-image: none;
+   image: url(_res/client/folder.png);
+ }</string>
+        </property>
         <property name="editTriggers">
          <set>QAbstractItemView::NoEditTriggers</set>
         </property>
