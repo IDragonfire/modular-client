@@ -8,7 +8,11 @@ class FriendListDialog(FormClass, BaseClass):
         self.setupUi(self)
 
         self.model = FriendListModel([FriendGroup('online', client), FriendGroup('offline', client)], client)
-        self.friendlist.setModel(self.model)
+
+        proxy = QtGui.QSortFilterProxyModel()
+        proxy.setSourceModel(self.model)
+        proxy.setSortRole(QtCore.Qt.UserRole)
+        self.friendlist.setModel(proxy)
 
         self.friendlist.header().setStretchLastSection(False);
         self.friendlist.header().resizeSection (1, 48)
@@ -125,7 +129,7 @@ class FriendListModel(QtCore.QAbstractItemModel):
         self.root = groups
         self.client = client
 
-        self.header = ['Player', 'land', 'rating', '#']
+        self.header = ['Player', 'Land', 'Rating', '#']
 
     def columnCount(self, parent):
         return len(self.header);
@@ -167,7 +171,14 @@ class FriendListModel(QtCore.QAbstractItemModel):
                     self.emit(QtCore.SIGNAL('modelChanged'), index, index)
             return pointer.pix
 
-        if role == QtCore.Qt.DisplayRole:
+        if role == QtCore.Qt.UserRole:
+            if isinstance(pointer, FriendGroup):
+                return None
+            if index.column() == 0:
+                return pointer.username
+
+
+        if role == QtCore.Qt.DisplayRole or role == QtCore.Qt.UserRole:
             if isinstance(pointer, FriendGroup):
                 if index.column() == 0:
                     return pointer.name
