@@ -1,5 +1,6 @@
 from PyQt4 import QtCore, QtGui
 from friendlist.friendlistudialog import FriendListDialog
+import util
 
 
 
@@ -7,6 +8,14 @@ class FriendList():
 
     def __init__(self, client):
         self.client = client
+
+        util.settings.beginGroup("friendlist")
+        self.enabled = util.settings.value('enabled', 'true') == 'true'
+        self.client.actionFriendlist.blockSignals(True)
+        self.client.actionFriendlist.setChecked(self.enabled)
+        self.client.actionFriendlist.blockSignals(False)
+        util.settings.endGroup()
+
         self.dialog = FriendListDialog(client)
         self.users = set()
 
