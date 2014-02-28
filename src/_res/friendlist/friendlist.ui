@@ -90,9 +90,9 @@ QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
      </property>
      <layout class="QVBoxLayout" name="verticalLayout_2">
       <item>
-       <widget class="QLabel" name="label">
+       <widget class="QLabel" name="labelUsername">
         <property name="text">
-         <string>[DEV] Dragonfire</string>
+         <string>[DEV] TestUser</string>
         </property>
        </widget>
       </item>
