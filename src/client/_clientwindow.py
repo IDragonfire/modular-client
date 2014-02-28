@@ -1258,6 +1258,15 @@ class ClientWindow(FormClass, BaseClass):
                 return self.players[name]["clan"]
         return ""
 
+    def getCompleteUserName(self, name, html = False):
+        clan = self.getUserClan(name)
+        if clan != '':
+            if html:
+                return '<b>[%s]</b>%s' % (clan, name)
+            else:
+                return '[%s] %s' % (clan, name)
+        return name
+
     def getUserLeague(self, name):
         '''
         Returns a user's league if any

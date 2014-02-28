@@ -85,6 +85,7 @@ class User():
 
     def __init__(self, username, group):
         self.username = username
+        self.name = group.client.getCompleteUserName(username)
         self.group = group
         self.country =  group.client.getUserCountry(username)
         self.rating = group.client.getUserRanking(username)
@@ -158,7 +159,7 @@ class FriendListModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return None
         pointer = index.internalPointer()
-        if role == QtCore.Qt.DecorationRole and hasattr(pointer, 'pix') and index.column() == 0:
+        if role == QtCore.Qt.DecorationRole and isinstance(pointer, User) and index.column() == 0:
             if pointer.avatarNotLoaded:
                 pointer.loadPixmap()
                 if not pointer.avatarNotLoaded:
@@ -167,7 +168,7 @@ class FriendListModel(QtCore.QAbstractItemModel):
             return pointer.pix
 
         if role == QtCore.Qt.DisplayRole:
-            if hasattr(pointer, 'name'):
+            if isinstance(pointer, FriendGroup):
                 if index.column() == 0:
                     return pointer.name
                 return None
@@ -178,7 +179,7 @@ class FriendListModel(QtCore.QAbstractItemModel):
                     return pointer.rating
                 if index.column() == 3:
                     return '#'
-                return pointer.username
+                return pointer.name
 
         return None
 
