@@ -26,12 +26,37 @@ class FriendListDialog(FormClass, BaseClass):
         # later use rubberband
         self.rubberBand = QtGui.QRubberBand(QtGui.QRubberBand.Rectangle)
 
+        self.loadSettings()
+
+    def closeEvent(self, event):
+        self.saveSettings()
+        event.accept()
+
+
+    def loadSettings(self):
+        util.settings.beginGroup("friendlist")
+        x = util.settings.value('x', 0)
+        y = util.settings.value('y', 0)
+        width = util.settings.value('width', 334)
+        height = util.settings.value('height', 291)
+        util.settings.endGroup()
+        self.setGeometry(QtCore.QRect(x,y,width,height))
+
+    def saveSettings(self):
+        util.settings.beginGroup("friendlist")
+        geometry = self.geometry()
+        util.settings.setValue('x', geometry.x())
+        util.settings.setValue('y', geometry.y())
+        util.settings.setValue('width', geometry.width())
+        util.settings.setValue('height', geometry.height())
+        util.settings.endGroup()
+        util.settings.sync()
+
     def addFriend(self, groupIndex, username):
         n = len(self.model.root[groupIndex].users)
         self.model.beginInsertRows(self.model.index(groupIndex, 0, QtCore.QModelIndex()), n, n)
         self.model.root[groupIndex].addUser(username)
         self.model.endInsertRows()
-        #self.model.emit(QtCore.SIGNAL('dataChanged'), QtCore.QModelIndex(), QtCore.QModelIndex())
 
     def removeFriend(self, groupIndex, username):
         row = self.model.root[groupIndex].getRowOfUser(username)
@@ -39,7 +64,6 @@ class FriendListDialog(FormClass, BaseClass):
             self.model.beginRemoveRows(self.model.index(groupIndex, 0, QtCore.QModelIndex()), row, row)
             del self.model.root[groupIndex].users[row]
             self.model.endRemoveRows()
-        #self.model.emit(QtCore.SIGNAL('dataChanged'), QtCore.QModelIndex(), QtCore.QModelIndex())
 
 class FriendGroup():
     def __init__(self, name):

@@ -575,7 +575,8 @@ class ClientWindow(FormClass, BaseClass):
 
     def show(self):
         super(FormClass, self).show()
-        self.friendList.dialog.show()
+        if self.friendList.enabled:
+            self.friendList.dialog.show()
 
 
     def warningHide(self):
@@ -903,6 +904,13 @@ class ClientWindow(FormClass, BaseClass):
         util.settings.setValue("autopostjoin", self.autopostjoin)
         util.settings.setValue("coloredNicknames", self.coloredNicknames)
         util.settings.endGroup()
+
+    @QtCore.pyqtSlot(bool)
+    def on_actionFriendlist_toggled(self, checked):
+        util.settings.beginGroup("friendlist")
+        util.settings.setValue("enabled", checked)
+        util.settings.endGroup()
+        self.friendList.dialog.setVisible(checked)
 
 
     def loadSettingsPrelogin(self):
