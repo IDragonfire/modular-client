@@ -5,7 +5,11 @@ FormClass, BaseClass = util.loadUiType("friendlist/friendlist.ui")
 class FriendListDialog(FormClass, BaseClass):
     def __init__(self, client):
         BaseClass.__init__(self, client)
+        self.client = client
+
         self.setupUi(self)
+
+        self.updateTopLabel()
 
         self.model = FriendListModel([FriendGroup('online', client), FriendGroup('offline', client)], client)
 
@@ -30,6 +34,9 @@ class FriendListDialog(FormClass, BaseClass):
         self.rubberBand = QtGui.QRubberBand(QtGui.QRubberBand.Rectangle)
 
         self.loadSettings()
+
+    def updateTopLabel(self):
+        self.labelUsername.setText(self.client.getCompleteUserName(self.client.login))
 
     def closeEvent(self, event):
         self.saveSettings()
@@ -56,6 +63,7 @@ class FriendListDialog(FormClass, BaseClass):
         util.settings.sync()
 
     def addFriend(self, groupIndex, username):
+        self.updateTopLabel()
         n = len(self.model.root[groupIndex].users)
         self.model.beginInsertRows(self.model.index(groupIndex, 0, QtCore.QModelIndex()), n, n)
         self.model.root[groupIndex].addUser(username)
