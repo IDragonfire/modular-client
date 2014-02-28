@@ -24,10 +24,8 @@ class FriendList():
         if self.client.isFriend(user):
             self.dialog.removeFriend(1, user)
             self.dialog.addFriend(0,user)
-        #print 'addUser', user
 
     def removeUser(self, user):
-        print 'remove user', user
         if user in self.users:
             self.users.remove(user)
             if self.client.isFriend(user):
@@ -45,7 +43,6 @@ class FriendList():
 
 
     def updateFriendList(self):
-        print 'addFriend', self.client.friends
         for friend in self.client.friends:
             if friend in self.users:
                 self.dialog.addFriend(0,friend)

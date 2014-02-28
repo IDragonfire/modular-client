@@ -1,6 +1,5 @@
 from PyQt4 import QtCore, QtGui
 import util
-from PyQt4.Qt import QModelIndex
 
 FormClass, BaseClass = util.loadUiType("friendlist/friendlist.ui")
 class FriendListDialog(FormClass, BaseClass):
@@ -8,7 +7,7 @@ class FriendListDialog(FormClass, BaseClass):
         BaseClass.__init__(self, client)
         self.setupUi(self)
 
-        self.model = FriendListModel([FriendGroup('online'), FriendGroup('offline')], client)
+        self.model = FriendListModel([FriendGroup('online', client), FriendGroup('offline', client)], client)
         self.friendlist.setModel(self.model)
 
         self.friendlist.header().setStretchLastSection(False);
@@ -66,7 +65,8 @@ class FriendListDialog(FormClass, BaseClass):
             self.model.endRemoveRows()
 
 class FriendGroup():
-    def __init__(self, name):
+    def __init__(self, name, client):
+        self.client = client
         self.name = name
         self.users = []
 
@@ -79,10 +79,37 @@ class FriendGroup():
                 return i
         return -1
 
+# cache for user information to speed up model
 class User():
+    indent = 6
+
     def __init__(self, username, group):
         self.username = username
         self.group = group
+        self.country =  group.client.getUserCountry(username)
+        self.rating = group.client.getUserRanking(username)
+        # TOO: fix it ...  called before avatar is loaded
+        self.avatarNotLoaded = False
+        self.loadPixmap()
+
+
+    def loadPixmap(self):
+        self.pix = QtGui.QPixmap(40+16 + self.indent, 20)
+        self.pix.fill(QtCore.Qt.transparent)
+        painter = QtGui.QPainter(self.pix)
+
+        self.avatar =  self.group.client.getUserAvatar(self.username)
+        if  self.avatar:
+            avatarPix = util.respix(self.avatar['url'])
+            if avatarPix:
+                painter.drawPixmap(0, 0, avatarPix)
+                self.avatarNotLoaded = False
+            else:
+                self.avatarNotLoaded = True
+
+        if self.country != None:
+            painter.drawPixmap(40 + self.indent, 2, util.icon("chat/countries/%s.png" % self.country.lower(), pix=True))
+        painter.end()
 
     def __str__(self):
         return self.username
@@ -131,25 +158,13 @@ class FriendListModel(QtCore.QAbstractItemModel):
         if not index.isValid():
             return None
         pointer = index.internalPointer()
-        if role == QtCore.Qt.DecorationRole and hasattr(pointer, 'username') and index.column() == 0:
-            indent = 6
-            pix = QtGui.QPixmap(40+16 + indent, 20)
-            pix.fill(QtCore.Qt.transparent)
-            painter = QtGui.QPainter(pix)
-
-            avatar =  self.client.getUserAvatar(pointer.username)
-            if avatar:
-                avatar = util.respix(avatar["url"])
-                if avatar:
-                    painter.drawPixmap(0, 0, avatar)
-
-            country = self.client.getUserCountry(pointer.username)
-            if country != None:
-                painter.drawPixmap(40 + indent, 2, util.icon("chat/countries/%s.png" % country.lower(), pix=True))
-            painter.end()
-
-            return pix
-
+        if role == QtCore.Qt.DecorationRole and hasattr(pointer, 'pix') and index.column() == 0:
+            if pointer.avatarNotLoaded:
+                pointer.loadPixmap()
+                if not pointer.avatarNotLoaded:
+                    print 'loaded'
+                    self.emit(QtCore.SIGNAL('modelChanged'), index, index)
+            return pointer.pix
 
         if role == QtCore.Qt.DisplayRole:
             if hasattr(pointer, 'name'):
@@ -158,9 +173,9 @@ class FriendListModel(QtCore.QAbstractItemModel):
                 return None
             else:
                 if index.column() == 1:
-                    return self.client.getUserCountry(pointer.username)
+                    return pointer.country
                 if index.column() == 2:
-                    return self.client.getUserRanking(pointer.username)
+                    return pointer.rating
                 if index.column() == 3:
                     return '#'
                 return pointer.username

@@ -136,6 +136,7 @@ class ChatWidget(FormClass, BaseClass, SimpleIRCClient):
 
 
     def finishDownloadAvatar(self, reply):
+        # TODO: cache it?
         ''' this take care of updating the avatars of players once they are downloaded '''
         img = QtGui.QImage()
         img.loadFromData(reply.readAll())
